@@ -2,13 +2,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { SearchResult } from '../types';
 
-if (!process.env.API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-
 export const getAiAnswer = async (prompt: string): Promise<SearchResult> => {
+  if (!process.env.API_KEY) {
+    throw new Error("API_KEY environment variable not set. Please ensure it is configured to use the AI search.");
+  }
+
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.5-flash",

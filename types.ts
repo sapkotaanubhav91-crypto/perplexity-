@@ -1,7 +1,9 @@
 
 export interface GroundingChunk {
   web: {
-    uri: string;
+    // FIX: The 'uri' property is optional in the @google/genai GroundingChunk type.
+    // Making it optional here to match and resolve the TypeScript error.
+    uri?: string;
     title: string;
   };
 }
