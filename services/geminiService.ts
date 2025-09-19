@@ -1,4 +1,4 @@
-import { GoogleGenAI, Chat, Part } from "@google/genai";
+import { GoogleGenAI, Chat, Part, Type } from "@google/genai";
 import { ChatMessage, GroundingChunk } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
@@ -27,6 +27,46 @@ const DEEP_SEARCH_PROMPT = `
   The final output should be a comprehensive report, not a simple answer.
   User's query is:
 `;
+
+export async function processUserRequest(parts: Part[]): Promise<{ isImageRequest: boolean; imagePrompt: string; }> {
+  const textPart = parts.find(p => 'text' in p) as { text: string } | undefined;
+  const userText = textPart?.text.trim() || '';
+
+  if (!userText) {
+    return { isImageRequest: false, imagePrompt: '' };
+  }
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: `Is the following user request an instruction to create, generate, draw, or make an image? User request: "${userText}". If it is, create a concise and descriptive prompt for an image generation model. If it is not, indicate that.`,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            isImageRequest: { type: Type.BOOLEAN, description: "Is this a request to generate an image?" },
+            imagePrompt: { type: Type.STRING, description: "The prompt for the image generation model." },
+          }
+        },
+      }
+    });
+
+    const jsonString = response.text.trim();
+    const result = JSON.parse(jsonString);
+    
+    if (typeof result.isImageRequest === 'boolean' && typeof result.imagePrompt === 'string') {
+        return result;
+    }
+    
+    throw new Error("Invalid JSON schema from classification model.");
+
+  } catch (error) {
+    console.error("Error processing user request intent:", error);
+    // Default to a standard search if classification fails
+    return { isImageRequest: false, imagePrompt: '' };
+  }
+}
 
 export async function* sendMessageStream(
   messages: ChatMessage[],
@@ -79,7 +119,6 @@ export async function* sendMessageStream(
 }
 
 
-// Keep generateImage for potential future use or if another component needs it.
 export async function generateImage(prompt: string): Promise<string> {
   try {
     const response = await ai.models.generateImages({

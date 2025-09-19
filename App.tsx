@@ -5,13 +5,15 @@ import SuggestionChips from './components/SuggestionChips';
 import ChatLog from './components/ChatLog';
 import Footer from './components/Footer';
 import { ChatMessage, Part } from './types';
-import { sendMessageStream } from './services/geminiService';
+import { sendMessageStream, processUserRequest, generateImage } from './services/geminiService';
+import useTextToSpeech from './hooks/useTextToSpeech';
 
 const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const chatLogRef = useRef<HTMLDivElement>(null);
+  const ttsControls = useTextToSpeech();
 
   useEffect(() => {
     // Scroll to the bottom of the chat log when new messages are added
@@ -23,6 +25,7 @@ const App: React.FC = () => {
   const handleSearch = useCallback(async (parts: Part[], isDeepSearch: boolean) => {
     if (isLoading) return;
 
+    ttsControls.cancel(); // Stop any ongoing speech from previous answer
     setIsLoading(true);
     setError(null);
 
@@ -36,40 +39,75 @@ const App: React.FC = () => {
     const currentMessages = [...messages, userMessage];
     setMessages(currentMessages);
     
-    // Add a placeholder for the streaming response
     const modelMessageId = (Date.now() + 1).toString();
     const modelMessagePlaceholder: ChatMessage = {
         id: modelMessageId,
         role: 'model',
-        parts: [{text: ''}], // Start with empty text part
+        parts: [{text: ''}], // Start with empty part for thinking indicator
         sources: [],
     };
     setMessages(prev => [...prev, modelMessagePlaceholder]);
 
     try {
-      let fullText = '';
-      const stream = sendMessageStream(currentMessages, isDeepSearch);
+      // Don't classify intent if it's a deep search or just an image upload
+      const justImage = parts.length === 1 && 'inlineData' in parts[0];
+      const intent = (isDeepSearch || justImage) 
+        ? { isImageRequest: false, imagePrompt: '' } 
+        : await processUserRequest(parts);
 
-      for await (const chunk of stream) {
-        fullText += chunk.text;
+      if (intent.isImageRequest && intent.imagePrompt) {
+        // --- Image Generation Path ---
+        const base64Image = await generateImage(intent.imagePrompt);
+        const imagePart: Part = { inlineData: { mimeType: 'image/jpeg', data: base64Image } };
+        // Add a text part to provide context
+        const textPart: Part = { text: `Here's an image for "${intent.imagePrompt}":` };
+
         setMessages(prev =>
           prev.map(msg =>
             msg.id === modelMessageId
-              ? { ...msg, parts: [{text: fullText}], sources: chunk.sources }
+              ? { ...msg, parts: [textPart, imagePart], sources: [] }
               : msg
           )
         );
+
+      } else {
+        // --- Text Search Path ---
+        let fullText = '';
+        const stream = sendMessageStream(currentMessages, isDeepSearch);
+
+        for await (const chunk of stream) {
+          fullText += chunk.text;
+          setMessages(prev =>
+            prev.map(msg =>
+              msg.id === modelMessageId
+                ? { ...msg, parts: [{text: fullText}], sources: chunk.sources }
+                : msg
+            )
+          );
+        }
+        
+        // Speak the final response once streaming is complete
+        const plainText = fullText.replace(/(\*\*|__|\*|_|`|#+\s)/g, ''); // Remove markdown
+        if (plainText) {
+          ttsControls.speak(plainText);
+        }
       }
 
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setError(errorMessage);
-      // Remove placeholder on error
-      setMessages(prev => prev.filter(msg => msg.id !== modelMessageId));
+      // Replace placeholder with error message
+       setMessages(prev =>
+          prev.map(msg =>
+            msg.id === modelMessageId
+              ? { ...msg, parts: [{text: `Sorry, I encountered an error: ${errorMessage}`}], sources: [] }
+              : msg
+          )
+        );
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, messages]);
+  }, [isLoading, messages, ttsControls]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSearch([{ text: suggestion }], false);
@@ -83,7 +121,7 @@ const App: React.FC = () => {
         <div className="flex flex-col h-screen">
           <div ref={chatLogRef} className="flex-grow overflow-y-auto p-4 md:p-6">
             <div className="container mx-auto max-w-3xl">
-              <ChatLog messages={messages} />
+              <ChatLog messages={messages} ttsControls={ttsControls} />
             </div>
           </div>
           <footer className="w-full p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200">

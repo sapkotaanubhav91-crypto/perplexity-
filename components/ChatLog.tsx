@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChatMessage } from '../types';
+import { ChatMessage, TTSControls } from '../types';
 import AnswerCard from './AnswerCard';
 
 // A new sub-component for the "Answer" / "Search" tabs
@@ -54,9 +54,10 @@ const UserMessageDisplay: React.FC<{ message: ChatMessage }> = ({ message }) => 
 
 interface ChatLogProps {
   messages: ChatMessage[];
+  ttsControls: TTSControls;
 }
 
-const ChatLog: React.FC<ChatLogProps> = ({ messages }) => {
+const ChatLog: React.FC<ChatLogProps> = ({ messages, ttsControls }) => {
   if (messages.length === 0) {
     return null;
   }
@@ -69,7 +70,7 @@ const ChatLog: React.FC<ChatLogProps> = ({ messages }) => {
       {lastUserMessage && <UserMessageDisplay message={lastUserMessage} />}
       <AnswerToolbar />
       {lastModelMessage && lastModelMessage.role === 'model' && (
-        <AnswerCard message={lastModelMessage} />
+        <AnswerCard message={lastModelMessage} ttsControls={ttsControls} />
       )}
     </div>
   );

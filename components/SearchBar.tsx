@@ -140,6 +140,8 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, is
     setIsListening(!isListening);
   };
 
+  const canSearch = query.trim() !== '' || image !== null;
+
   const commonProps = (
     <>
      <input
@@ -167,9 +169,6 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, is
        <button onClick={handleImageUploadClick} className="p-1.5 text-gray-600 hover:bg-gray-200 rounded-md transition-colors" aria-label="Attach file">
          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
       </button>
-       <button onClick={handleVoiceClick} className={`p-1.5 text-gray-600 hover:bg-gray-200 rounded-md transition-colors ${isListening ? 'animate-pulse' : ''}`} aria-label="Voice search">
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>
-      </button>
     </>
   );
 
@@ -189,12 +188,12 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, is
            {commonButtons}
         </div>
         <button
-          onClick={handleSearch}
-          disabled={isLoading || (!query.trim() && !image)}
-          className="bg-gray-200 text-gray-700 p-2 rounded-lg hover:bg-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed transition-colors"
-          aria-label="Submit"
+          onClick={canSearch ? handleSearch : handleVoiceClick}
+          disabled={isLoading}
+          className={`p-2 rounded-lg transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${isListening && !canSearch ? 'animate-pulse' : ''} ${canSearch ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
+          aria-label={canSearch ? "Submit" : "Voice search"}
         >
-          {isLoading ? <div className="h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>}
+          {isLoading ? <div className="h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div> : canSearch ? <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
         </button>
       </div>
     );
@@ -212,12 +211,12 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, is
         {commonButtons}
       </div>
       <button
-        onClick={handleSearch}
-        disabled={isLoading || (!query.trim() && !image)}
-        className="bg-primary text-white p-3 rounded-2xl hover:bg-primary-dark disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
-        aria-label="Submit"
+        onClick={canSearch ? handleSearch : handleVoiceClick}
+        disabled={isLoading}
+        className={`p-3 rounded-2xl transition-colors disabled:cursor-not-allowed ${isListening && !canSearch ? 'animate-pulse' : ''} ${canSearch ? 'bg-primary text-white hover:bg-primary-dark disabled:bg-gray-300' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}
+        aria-label={canSearch ? "Submit" : "Voice search"}
       >
-        {isLoading ? <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>}
+        {isLoading ? <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : canSearch ? <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg> : <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" /></svg>}
       </button>
     </div>
   );

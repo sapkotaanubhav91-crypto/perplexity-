@@ -14,3 +14,12 @@ export interface ChatMessage {
   sources?: GroundingChunk[];
   isDeepSearch?: boolean; // Only for user messages
 }
+
+export interface TTSControls {
+  speak: (text: string) => void;
+  cancel: () => void;
+  isSpeaking: boolean;
+  voices: SpeechSynthesisVoice[];
+  selectedVoice: SpeechSynthesisVoice | undefined;
+  setSelectedVoice: (voiceName: string) => void;
+}
