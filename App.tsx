@@ -1,69 +1,116 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Header from './components/Header';
-import SearchBar from './components/SearchBar';
-import LoadingSpinner from './components/LoadingSpinner';
-import AnswerCard from './components/AnswerCard';
-import { getAiAnswer } from './services/geminiService';
-import { GroundingChunk } from './types';
+import PromptInputBar from './components/SearchBar';
+import SuggestionChips from './components/SuggestionChips';
+import ChatLog from './components/ChatLog';
+import Footer from './components/Footer';
+import { ChatMessage, Part } from './types';
+import { sendMessageStream } from './services/geminiService';
 
 const App: React.FC = () => {
-  const [query, setQuery] = useState<string>('');
-  const [answer, setAnswer] = useState<string>('');
-  const [sources, setSources] = useState<GroundingChunk[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const chatLogRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = useCallback(async () => {
-    if (!query.trim() || isLoading) return;
+  useEffect(() => {
+    // Scroll to the bottom of the chat log when new messages are added
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+    }
+  }, [messages]);
+
+  const handleSearch = useCallback(async (parts: Part[], isDeepSearch: boolean) => {
+    if (isLoading) return;
 
     setIsLoading(true);
     setError(null);
-    setAnswer('');
-    setSources([]);
+
+    const userMessage: ChatMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      parts: parts,
+      isDeepSearch: isDeepSearch,
+    };
+    
+    const currentMessages = [...messages, userMessage];
+    setMessages(currentMessages);
+    
+    // Add a placeholder for the streaming response
+    const modelMessageId = (Date.now() + 1).toString();
+    const modelMessagePlaceholder: ChatMessage = {
+        id: modelMessageId,
+        role: 'model',
+        parts: [{text: ''}], // Start with empty text part
+        sources: [],
+    };
+    setMessages(prev => [...prev, modelMessagePlaceholder]);
 
     try {
-      const result = await getAiAnswer(query);
-      setAnswer(result.answer);
-      setSources(result.sources);
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
-      } else {
-        setError('An unexpected error occurred.');
+      let fullText = '';
+      const stream = sendMessageStream(currentMessages, isDeepSearch);
+
+      for await (const chunk of stream) {
+        fullText += chunk.text;
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === modelMessageId
+              ? { ...msg, parts: [{text: fullText}], sources: chunk.sources }
+              : msg
+          )
+        );
       }
+
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setError(errorMessage);
+      // Remove placeholder on error
+      setMessages(prev => prev.filter(msg => msg.id !== modelMessageId));
     } finally {
       setIsLoading(false);
     }
-  }, [query, isLoading]);
+  }, [isLoading, messages]);
+
+  const handleSuggestionClick = (suggestion: string) => {
+    handleSearch([{ text: suggestion }], false);
+  };
+
+  const isChatting = messages.length > 0;
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white font-sans flex flex-col items-center p-4 sm:p-6 md:p-8">
-      <div className="w-full max-w-3xl flex flex-col items-center pt-16">
-        <Header />
-        <p className="text-center text-slate-400 mb-8 max-w-xl">
-          Your AI-powered answer engine. Ask anything and get a direct answer with cited sources from the web.
-        </p>
-        <SearchBar 
-          query={query}
-          setQuery={setQuery}
-          onSearch={handleSearch}
-          isLoading={isLoading}
-        />
-
-        <div className="mt-10 w-full flex flex-col items-center">
-          {isLoading && <LoadingSpinner />}
-          {error && (
-            <div className="mt-6 p-4 bg-red-900/50 border border-red-700 text-red-300 rounded-lg w-full max-w-2xl">
-              <p className="font-semibold">Error:</p>
-              <p>{error}</p>
+    <div className={`min-h-screen font-sans transition-colors duration-300 ${isChatting ? 'bg-white' : 'bg-[#F6F8F7]'}`}>
+      {isChatting ? (
+        <div className="flex flex-col h-screen">
+          <div ref={chatLogRef} className="flex-grow overflow-y-auto p-4 md:p-6">
+            <div className="container mx-auto max-w-3xl">
+              <ChatLog messages={messages} />
             </div>
-          )}
-          {!isLoading && answer && (
-            <AnswerCard answer={answer} sources={sources} />
-          )}
+          </div>
+          <footer className="w-full p-4 bg-white/80 backdrop-blur-sm border-t border-gray-200">
+             <div className="container mx-auto max-w-3xl">
+              <PromptInputBar onSearch={handleSearch} isLoading={isLoading} isFollowUp={true} />
+              {error && (
+                <p className="text-red-600 text-sm mt-2 text-center">{error}</p>
+              )}
+            </div>
+          </footer>
         </div>
-      </div>
+      ) : (
+        <main className="container mx-auto px-4 py-8 md:py-16 flex flex-col items-center justify-center min-h-screen">
+          <div className="flex flex-col items-center text-center w-full max-w-2xl">
+            <Header />
+            <PromptInputBar onSearch={handleSearch} isLoading={isLoading} />
+            <SuggestionChips onSuggestionClick={handleSuggestionClick} />
+             {error && (
+              <div className="mt-4 p-4 bg-red-100 border border-red-400 text-red-700 rounded-lg w-full">
+                <p className="font-semibold">Error:</p>
+                <p>{error}</p>
+              </div>
+            )}
+          </div>
+          <Footer />
+        </main>
+      )}
     </div>
   );
 };

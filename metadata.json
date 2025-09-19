@@ -1,5 +1,7 @@
 {
-  "name": "Perplexity AI Search",
-  "description": "An AI-powered search engine that uses Google Search to provide accurate and up-to-date answers to your questions, complete with source citations.",
-  "requestFramePermissions": []
+  "name": "Anthara",
+  "description": "Anthara: An AI-powered search engine that uses Google Search to provide accurate and up-to-date answers to your questions, complete with source citations.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
 }

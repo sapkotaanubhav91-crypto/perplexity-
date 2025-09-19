@@ -1,14 +1,16 @@
-
 export interface GroundingChunk {
-  web: {
-    // FIX: The 'uri' property is optional in the @google/genai GroundingChunk type.
-    // Making it optional here to match and resolve the TypeScript error.
-    uri?: string;
-    title: string;
+  web?: {
+    uri: string;
+    title?: string;
   };
 }
 
-export interface SearchResult {
-  answer: string;
-  sources: GroundingChunk[];
+export type Part = { text: string } | { inlineData: { mimeType: string; data: string } };
+
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'model';
+  parts: Part[];
+  sources?: GroundingChunk[];
+  isDeepSearch?: boolean; // Only for user messages
 }
