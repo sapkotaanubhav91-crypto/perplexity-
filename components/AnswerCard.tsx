@@ -15,6 +15,35 @@ const IconButton: React.FC<{ icon: React.ReactNode; ariaLabel: string, onClick?:
     </button>
 );
 
+const addSeparatorsToText = (inputText: string): string => {
+  const WORD_LIMIT = 70;
+  
+  const paragraphs = inputText.split('\n\n');
+
+  const processedParagraphs = paragraphs.map(paragraph => {
+    // Ignore markdown structures like lists, headers, blockquotes, code fences
+    const isMarkdownStructure = /^\s*([*+-]|\d+\.|#|>|`{3})/.test(paragraph);
+    if (isMarkdownStructure) {
+      return paragraph;
+    }
+
+    const words = paragraph.trim().split(/\s+/);
+    if (words.length <= WORD_LIMIT) {
+      return paragraph;
+    }
+    
+    const chunks = [];
+    for (let i = 0; i < words.length; i += WORD_LIMIT) {
+      chunks.push(words.slice(i, i + WORD_LIMIT).join(' '));
+    }
+    
+    // Join chunks with a subtle horizontal rule and create new paragraphs
+    return chunks.join('\n\n<hr class="border-t border-gray-200 my-4"/>\n\n');
+  });
+
+  return processedParagraphs.join('\n\n');
+};
+
 const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElaborationRequest }) => {
   const { parts, sources, isDeepSearch } = message;
   const textPart = parts.find(p => 'text' in p);
@@ -47,13 +76,11 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
     );
   }
   
-  const parsedHtml = text ? marked.parse(text) : '';
+  const formattedText = addSeparatorsToText(text);
+  const parsedHtml = formattedText ? marked.parse(formattedText) : '';
   const plainText = text.replace(/(\*\*|__|\*|_|`|#+\s)/g, ''); // Basic markdown removal for cleaner speech
   
   const contentClasses = ['text-gray-800', 'text-base', 'leading-relaxed', 'prose'];
-  if (text.split('\n').length > 50) {
-    contentClasses.push('long-text-columns');
-  }
 
   return (
     <div className="w-full">
