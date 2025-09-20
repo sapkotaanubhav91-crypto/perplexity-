@@ -212,9 +212,9 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading }) 
                 <SearchBarButton onClick={handleImageUploadClick} ariaLabel="Attach file">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" /></svg>
                 </SearchBarButton>
-                <SearchBarButton onClick={() => setIsDeepSearch(!isDeepSearch)} isActive={isDeepSearch} ariaLabel="Toggle In-depth search">
+                <SearchBarButton onClick={() => setIsDeepSearch(!isDeepSearch)} isActive={isDeepSearch} ariaLabel="Toggle Deep Research">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" /></svg>
-                    <span>In-depth</span>
+                    <span>Deep Research</span>
                 </SearchBarButton>
                 <SearchBarButton hasDropdown={true} ariaLabel="Select agent">
                     <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-6-3a2 2 0 11-4 0 2 2 0 014 0zm-2 4a5 5 0 00-4.546 2.916A5.986 5.986 0 0010 16a5.986 5.986 0 004.546-2.084A5 5 0 0010 11z" clipRule="evenodd" /></svg>

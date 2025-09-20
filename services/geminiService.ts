@@ -126,9 +126,13 @@ export async function* sendMessageStream({
       contents: contents,
       config: {}
   };
+  
+  // Enable Google Search for standard and deep searches to provide real-time info and sources.
+  if (!isElaboration) {
+    modelParams.config.tools = [{ googleSearch: {} }];
+  }
 
   if (isDeepSearch) {
-      modelParams.config.tools = [{ googleSearch: {} }];
       const lastContent = modelParams.contents[modelParams.contents.length - 1];
       const textPartIndex = lastContent.parts.findIndex(p => 'text' in p);
       if (textPartIndex !== -1) {
