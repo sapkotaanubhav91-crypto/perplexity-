@@ -46,7 +46,6 @@ import { Part } from '../types';
 interface PromptInputBarProps {
   onSearch: (parts: Part[], isDeepSearch: boolean) => void;
   isLoading: boolean;
-  isFollowUp?: boolean;
 }
 
 const SearchBarButton: React.FC<{
@@ -74,7 +73,7 @@ const SearchBarButton: React.FC<{
   );
 };
 
-const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, isFollowUp = false }) => {
+const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading }) => {
   const [query, setQuery] = useState('');
   const [isDeepSearch, setIsDeepSearch] = useState(false);
   const [image, setImage] = useState<{ data: string; mimeType: string; } | null>(null);
@@ -172,31 +171,6 @@ const PromptInputBar: React.FC<PromptInputBarProps> = ({ onSearch, isLoading, is
   };
 
   const canSearch = query.trim() !== '' || image !== null;
-  
-  if (isFollowUp) {
-      return (
-      <div className="relative w-full bg-white border border-gray-200 rounded-2xl shadow-lg p-2 flex items-center gap-2">
-        <input
-            ref={inputRef}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Ask a follow-up..."
-            disabled={isLoading}
-            className="flex-grow bg-transparent focus:outline-none text-gray-800"
-        />
-        <button
-          onClick={handleSearch}
-          disabled={isLoading || !canSearch}
-          className={`p-2 rounded-lg transition-colors disabled:bg-gray-100 disabled:cursor-not-allowed ${canSearch ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-transparent text-gray-600 hover:bg-gray-200'}`}
-          aria-label="Submit"
-        >
-          {isLoading ? <div className="h-5 w-5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin"></div> : <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 10l7-7m0 0l7 7m-7-7v18" /></svg>}
-        </button>
-      </div>
-    );
-  }
 
   return (
     <div className="relative w-full max-w-3xl">
