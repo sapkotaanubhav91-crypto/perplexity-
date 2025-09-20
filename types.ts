@@ -23,3 +23,10 @@ export interface TTSControls {
   selectedVoice: SpeechSynthesisVoice | undefined;
   setSelectedVoice: (voiceName: string) => void;
 }
+
+export type RequestType = 'search' | 'generate' | 'edit';
+
+export interface ProcessedRequest {
+  requestType: RequestType;
+  prompt: string;
+}

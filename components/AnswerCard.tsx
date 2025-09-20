@@ -47,7 +47,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls }) => {
   };
 
   return (
-    <div className="w-full pt-6">
+    <div className="w-full pt-4">
       {imagePart && 'inlineData' in imagePart && (
         <div className="mb-4">
           <img

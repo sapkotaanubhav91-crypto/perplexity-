@@ -1,6 +1,6 @@
 {
-  "name": "Anthara",
-  "description": "Anthara: An AI-powered search engine that uses Google Search to provide accurate and up-to-date answers to your questions, complete with source citations.",
+  "name": "Krut AI Assistant",
+  "description": "An AI assistant to help you with your thoughts.",
   "requestFramePermissions": [
     "microphone"
   ]
