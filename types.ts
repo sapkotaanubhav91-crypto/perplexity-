@@ -12,7 +12,9 @@ export interface ChatMessage {
   role: 'user' | 'model';
   parts: Part[];
   sources?: GroundingChunk[];
-  isDeepSearch?: boolean; // Only for user messages
+  isDeepSearch?: boolean; // For user messages to trigger, and model messages to show status.
+  isFollowUpPrompt?: boolean; // For model messages to show the "tell me more" button.
+  originalUserMessageId?: string; // For model messages to link back to the original user query.
 }
 
 export interface TTSControls {

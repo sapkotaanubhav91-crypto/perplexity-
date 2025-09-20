@@ -22,6 +22,91 @@ const App: React.FC = () => {
     }
   }, [messages]);
 
+  const streamResponse = useCallback(async (
+      stream: AsyncGenerator<{ text: string; sources: GroundingChunk[] }>,
+      modelMessageId: string
+  ) => {
+      let streamedText = '';
+      const sources: GroundingChunk[] = [];
+      const uniqueSourceUris = new Set<string>();
+
+      for await (const chunk of stream) {
+          streamedText += chunk.text;
+          if (chunk.sources) {
+              chunk.sources.forEach(source => {
+                  if (source.web?.uri && !uniqueSourceUris.has(source.web.uri)) {
+                      sources.push(source);
+                      uniqueSourceUris.add(source.web.uri);
+                  }
+              });
+          }
+          setMessages(prev =>
+              prev.map(msg =>
+                  msg.id === modelMessageId
+                      ? { ...msg, parts: [{ text: streamedText }], sources: [...sources] }
+                      : msg
+              )
+          );
+      }
+      return streamedText;
+  }, []);
+  
+  const handleRequestElaboration = useCallback(async (modelMessageIdToUpdate: string, originalUserMessageId: string) => {
+    if (isLoading) return;
+    
+    const originalUserMessage = messages.find(m => m.id === originalUserMessageId);
+    if (!originalUserMessage) return;
+
+    setIsLoading(true);
+    setError(null);
+    ttsControls.cancel();
+
+    // Disable the "Tell me more" button on the previous answer
+    const messagesWithButtonDisabled = messages.map(msg =>
+      msg.id === modelMessageIdToUpdate ? { ...msg, isFollowUpPrompt: false } : msg
+    );
+    
+    const followUpUserMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'user',
+        parts: [{ text: 'Yes, tell me more.' }],
+    };
+    
+    const updatedMessages = [...messagesWithButtonDisabled, followUpUserMessage];
+    setMessages(updatedMessages);
+
+    // Create a new history for the model containing only up to the original question
+    const originalMessageIndex = messages.findIndex(m => m.id === originalUserMessageId);
+    const historyForModel = messages.slice(0, originalMessageIndex + 1);
+
+    // Add an empty model message to show a thinking indicator
+    const modelMessageId = (Date.now() + 1).toString();
+    const modelMessage: ChatMessage = {
+      id: modelMessageId,
+      role: 'model',
+      parts: [{ text: '' }],
+    };
+    setMessages(prev => [...prev, modelMessage]);
+    
+    try {
+        const stream = sendMessageStream({ history: historyForModel, isElaboration: true });
+        await streamResponse(stream, modelMessageId);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
+      setError(errorMessage);
+      setMessages(prev =>
+        prev.map(msg =>
+          msg.id === modelMessageId
+            ? { ...msg, parts: [{ text: `Sorry, I ran into an error: ${errorMessage}` }] }
+            : msg
+        )
+      );
+    } finally {
+        setIsLoading(false);
+    }
+
+  }, [isLoading, messages, ttsControls, streamResponse]);
+
   const handleSearch = useCallback(async (parts: Part[], isDeepSearch: boolean) => {
     if (isLoading) return;
 
@@ -45,6 +130,7 @@ const App: React.FC = () => {
       id: modelMessageId,
       role: 'model',
       parts: [{ text: '' }],
+      isDeepSearch: isDeepSearch,
     };
     setMessages(prev => [...prev, modelMessage]);
 
@@ -74,29 +160,16 @@ const App: React.FC = () => {
             setMessages(prev => prev.map(msg => msg.id === modelMessageId ? finalModelMessage : msg));
 
         } else { // 'search'
-            const stream = sendMessageStream(updatedMessages, isDeepSearch);
-            let streamedText = '';
-            const sources: GroundingChunk[] = [];
-            const uniqueSourceUris = new Set<string>();
+            const stream = sendMessageStream({history: updatedMessages, isDeepSearch});
+            await streamResponse(stream, modelMessageId);
 
-            for await (const chunk of stream) {
-                streamedText += chunk.text;
-                if (chunk.sources) {
-                  chunk.sources.forEach(source => {
-                    if (source.web?.uri && !uniqueSourceUris.has(source.web.uri)) {
-                      sources.push(source);
-                      uniqueSourceUris.add(source.web.uri);
-                    }
-                  });
-                }
-                
-                setMessages(prev =>
-                    prev.map(msg =>
-                        msg.id === modelMessageId
-                            ? { ...msg, parts: [{ text: streamedText }], sources: [...sources] }
-                            : msg
-                    )
-                );
+            // If it was a standard search (not deep search), mark it for follow-up.
+            if (!isDeepSearch) {
+              setMessages(prev => prev.map(msg => 
+                msg.id === modelMessageId
+                  ? { ...msg, isFollowUpPrompt: true, originalUserMessageId: userMessage.id }
+                  : msg
+              ));
             }
         }
     } catch (err) {
@@ -112,7 +185,7 @@ const App: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [isLoading, messages, ttsControls]);
+  }, [isLoading, messages, ttsControls, streamResponse]);
 
   const handleSuggestionClick = (suggestion: string) => {
     handleSearch([{ text: suggestion }], false);
@@ -132,7 +205,7 @@ const App: React.FC = () => {
               <SuggestionChips onSuggestionClick={handleSuggestionClick} />
             </div>
           ) : (
-            <ChatLog messages={messages} ttsControls={ttsControls} />
+            <ChatLog messages={messages} ttsControls={ttsControls} onElaborationRequest={handleRequestElaboration} />
           )}
         </div>
       </div>

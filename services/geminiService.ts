@@ -1,20 +1,20 @@
 // Fix: Use a type alias for the SDK's Part type to disambiguate from the app's internal Part type.
-import { GoogleGenAI, Chat, Part as GeminiPart, Type, Modality } from "@google/genai";
+import { GoogleGenAI, Part as GeminiPart, Type, Modality } from "@google/genai";
 // Fix: Explicitly import the app's internal Part type.
 import { ChatMessage, GroundingChunk, ProcessedRequest, Part } from '../types';
 
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-let chat: Chat | null = null;
 
-function initializeChat(): Chat {
-  return ai.chats.create({
-    model: "gemini-2.5-flash",
-    config: {
-      systemInstruction: "You are Anthara AI. You must not use swear words or offensive language. When asked who created you, state: 'I was created and trained by Anubhav, Daksh, and Johaan.'. For any answer that is long or complex, you must format it for readability. Use paragraphs to separate distinct ideas. Use bullet points or numbered lists for steps or lists of items. This makes information easier to understand.",
-      tools: [{ googleSearch: {} }],
-    },
-  });
-}
+const CONCISE_SYSTEM_PROMPT = `You are Anthara AI. You must respond in the same language as the user's prompt. 
+First, provide a concise, direct summary answer to the user's question, typically in 3-4 sentences.
+Then, on a new line, ask "Would you like a more detailed explanation?" or a similar question in the user's language. 
+Do not add any other text after this question.
+When asked who created you, state: 'I was created and trained by Anubhav, Daksh, and Johaan.' in the language of the response.`;
+
+const DETAILED_SYSTEM_PROMPT = `You are Anthara AI, an expert research analyst. You must respond in the same language as the user's prompt.
+Provide a comprehensive, well-structured, and detailed answer to the user's query.
+Format the response for readability: use paragraphs to separate distinct ideas, and use bullet points or numbered lists for steps or lists of items.
+When asked who created you, state: 'I was created and trained by Anubhav, Daksh, and Johaan.' in the language of the response.`;
 
 const DEEP_SEARCH_PROMPT = `
   You are an expert research analyst. Your task is to conduct a deep and thorough investigation into the user's query.
@@ -28,6 +28,7 @@ const DEEP_SEARCH_PROMPT = `
   4.  **Future Outlook:** Analyze the future trends and potential developments.
   Ensure that all claims and data points are supported by citing the sources you use.
   The final output should be a comprehensive report, not a simple answer.
+  The entire report MUST be in the same language as the user's query.
   User's query is:
 `;
 
@@ -47,11 +48,11 @@ export async function processUserRequest(parts: Part[]): Promise<ProcessedReques
   let responseSchema: any;
 
   if (imagePart) {
-    contents = `Analyze the user's request which includes an image and text. Determine if the user wants to EDIT the image based on the text prompt, or if they are just asking a QUESTION about the image.
-    User's text: "${userText}"
-    
-    If it is an edit request, the 'requestType' should be 'edit' and the 'prompt' should be the user's text.
-    If it is a question about the image, the 'requestType' should be 'search' and the 'prompt' should be the user's original text.`;
+    contents = `Analyze the user's request, which can be in any language. It includes an image and the following text: "${userText}". Your task is to determine if the user wants to EDIT the image based on the text, or if they are asking a QUESTION about the image.
+
+If it's an edit request, the 'requestType' should be 'edit'.
+If it's a question, the 'requestType' should be 'search'.
+The 'prompt' for both cases should be the user's original text.`;
     
     responseSchema = {
       type: Type.OBJECT,
@@ -61,11 +62,10 @@ export async function processUserRequest(parts: Part[]): Promise<ProcessedReques
       }
     };
   } else {
-    contents = `Is the following user request an instruction to create, generate, draw, or make an image? 
-    User request: "${userText}". 
-    
-    If it is an image generation request, the 'requestType' should be 'generate' and the 'prompt' should be a concise, descriptive prompt for an image model.
-    If it is not an image generation request, the 'requestType' should be 'search' and the 'prompt' should be the user's original text.`;
+    contents = `Analyze the user's request, which can be in any language: "${userText}". Determine if the user's intent is to generate an image (e.g., "draw a horse", "générer une image d'un chat").
+
+If the intent is image generation, set 'requestType' to 'generate' and create a concise, descriptive 'prompt' in English for an image model.
+If the intent is anything else (e.g., a question, a statement), set 'requestType' to 'search' and use the user's original text as the 'prompt'.`;
 
     responseSchema = {
       type: Type.OBJECT,
@@ -100,35 +100,51 @@ export async function processUserRequest(parts: Part[]): Promise<ProcessedReques
   }
 }
 
-export async function* sendMessageStream(
-  messages: ChatMessage[],
-  isDeepSearch: boolean = false
-): AsyncGenerator<{ text: string; sources: GroundingChunk[] }> {
-  if (!chat) {
-    chat = initializeChat();
-  }
+export async function* sendMessageStream({
+  history,
+  isDeepSearch = false,
+  isElaboration = false
+}: {
+  history: ChatMessage[],
+  isDeepSearch?: boolean,
+  isElaboration?: boolean
+}): AsyncGenerator<{ text: string; sources: GroundingChunk[] }> {
 
-  const lastUserMessage = messages[messages.length - 1];
-  if (!lastUserMessage || lastUserMessage.role !== 'user') {
+  const lastMessage = history[history.length - 1];
+  if (!lastMessage || lastMessage.role !== 'user') {
     return;
   }
+  
+  // Create a deep copy for modification
+  const contents = history.map(msg => ({
+      role: msg.role,
+      parts: JSON.parse(JSON.stringify(msg.parts)) as GeminiPart[],
+  }));
 
-  // Fix: Ensure userParts is typed as GeminiPart[] for compatibility with the SDK.
-  const userParts: GeminiPart[] = JSON.parse(JSON.stringify(lastUserMessage.parts));
+  const modelParams: any = {
+      model: "gemini-2.5-flash",
+      contents: contents,
+      config: {}
+  };
 
   if (isDeepSearch) {
-    const textPartIndex = userParts.findIndex(p => 'text' in p);
-    if (textPartIndex !== -1) {
-      const textPart = userParts[textPartIndex] as { text: string };
-      textPart.text = `${DEEP_SEARCH_PROMPT} "${textPart.text}"`;
-    } else {
-      userParts.unshift({ text: `${DEEP_SEARCH_PROMPT} "Analyze this image"` });
-    }
+      modelParams.config.tools = [{ googleSearch: {} }];
+      const lastContent = modelParams.contents[modelParams.contents.length - 1];
+      const textPartIndex = lastContent.parts.findIndex(p => 'text' in p);
+      if (textPartIndex !== -1) {
+          const textPart = lastContent.parts[textPartIndex] as { text: string };
+          textPart.text = `${DEEP_SEARCH_PROMPT} "${textPart.text}"`;
+      } else {
+          lastContent.parts.unshift({ text: `${DEEP_SEARCH_PROMPT} "Analyze this image"` });
+      }
+  } else if (isElaboration) {
+      modelParams.config.systemInstruction = DETAILED_SYSTEM_PROMPT;
+  } else {
+      modelParams.config.systemInstruction = CONCISE_SYSTEM_PROMPT;
   }
-
+  
   try {
-    // Fix: Pass the correctly typed userParts to the SDK.
-    const stream = await chat.sendMessageStream({ message: userParts });
+    const stream = await ai.models.generateContentStream(modelParams);
 
     for await (const chunk of stream) {
       const text = chunk.text;

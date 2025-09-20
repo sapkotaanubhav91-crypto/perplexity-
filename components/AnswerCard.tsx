@@ -6,6 +6,7 @@ import { marked } from 'marked';
 interface AnswerCardProps {
   message: ChatMessage;
   ttsControls: TTSControls;
+  onElaborationRequest: (modelMessageId: string, originalUserMessageId: string) => void;
 }
 
 const IconButton: React.FC<{ icon: React.ReactNode; ariaLabel: string, onClick?: () => void }> = ({ icon, ariaLabel, onClick }) => (
@@ -14,15 +15,29 @@ const IconButton: React.FC<{ icon: React.ReactNode; ariaLabel: string, onClick?:
     </button>
 );
 
-const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls }) => {
-  const { parts, sources } = message;
+const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElaborationRequest }) => {
+  const { parts, sources, isDeepSearch } = message;
   const textPart = parts.find(p => 'text' in p);
   const imagePart = parts.find(p => 'inlineData' in p);
 
   const text = textPart && 'text' in textPart ? textPart.text : '';
   const { speak, cancel, isSpeaking } = ttsControls;
 
-  if (text === '' && !imagePart) { // Render thinking indicator only if text and image are missing
+  if (text === '' && !imagePart) { // Render loading indicator
+    if (isDeepSearch) {
+      return (
+        <div className="w-full p-4 bg-gray-50 border border-gray-200 rounded-xl">
+            <div className="flex items-center space-x-4">
+                <div className="w-6 h-6 border-2 border-gray-400 border-t-transparent rounded-full animate-spin"></div>
+                <div>
+                    <p className="text-gray-800 font-semibold">Performing in-depth research...</p>
+                    <p className="text-gray-600 text-sm mt-0.5">This takes a little longer but provides more accurate and detailed answers.</p>
+                </div>
+            </div>
+        </div>
+      );
+    }
+    // Render standard thinking indicator
     return (
        <div className="w-full py-6 flex items-center space-x-3">
          <div className="w-2 h-2 bg-gray-500 rounded-full animate-pulse"></div>
@@ -34,6 +49,11 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls }) => {
   
   const parsedHtml = text ? marked.parse(text) : '';
   const plainText = text.replace(/(\*\*|__|\*|_|`|#+\s)/g, ''); // Basic markdown removal for cleaner speech
+  
+  const contentClasses = ['text-gray-800', 'text-base', 'leading-relaxed', 'prose'];
+  if (text.split('\n').length > 50) {
+    contentClasses.push('long-text-columns');
+  }
 
   return (
     <div className="w-full">
@@ -49,11 +69,22 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls }) => {
 
       {text && (
         <div 
-          className="text-gray-800 text-base leading-relaxed prose"
+          className={contentClasses.join(' ')}
           dangerouslySetInnerHTML={{ __html: parsedHtml }}
         />
       )}
       
+      {message.isFollowUpPrompt && message.originalUserMessageId && (
+        <div className="mt-4 pt-4 border-t border-gray-200/80">
+          <button 
+            onClick={() => onElaborationRequest(message.id, message.originalUserMessageId!)}
+            className="px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Tell me more
+          </button>
+        </div>
+      )}
+
       <div className="flex items-center gap-2 mt-4">
           <IconButton 
             icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.898 0V3a1 1 0 112 0v2.101a7.002 7.002 0 01-11.898 0V3a1 1 0 01-1-1zM10 18a7.002 7.002 0 006.323-3.99.5.5 0 00-.866-.5A6.002 6.002 0 014.543 13.51a.5.5 0 00-.866.5A7.002 7.002 0 0010 18z" clipRule="evenodd" /></svg>} 

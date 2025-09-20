@@ -24,9 +24,10 @@ const MessagePart: React.FC<{ part: Part }> = ({ part }) => {
 interface ChatLogProps {
   messages: ChatMessage[];
   ttsControls: TTSControls;
+  onElaborationRequest: (modelMessageId: string, originalUserMessageId: string) => void;
 }
 
-const ChatLog: React.FC<ChatLogProps> = ({ messages, ttsControls }) => {
+const ChatLog: React.FC<ChatLogProps> = ({ messages, ttsControls, onElaborationRequest }) => {
   return (
     <div className="flex flex-col gap-8">
       {messages.map((message) => {
@@ -48,7 +49,7 @@ const ChatLog: React.FC<ChatLogProps> = ({ messages, ttsControls }) => {
           return (
             <div key={message.id} className="flex justify-start items-start">
                 <div className="max-w-2xl">
-                    <AnswerCard message={message} ttsControls={ttsControls} />
+                    <AnswerCard message={message} ttsControls={ttsControls} onElaborationRequest={onElaborationRequest} />
                 </div>
             </div>
           );
