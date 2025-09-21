@@ -26,9 +26,22 @@ export interface TTSControls {
   setSelectedVoice: (voiceName: string) => void;
 }
 
-export type RequestType = 'search' | 'generate' | 'edit';
+export type RequestMode =
+  | 'search'
+  | 'generate'
+  | 'explain'
+  | 'refactor'
+  | 'debug'
+  | 'test'
+  | 'lint_fix'
+  | 'compare'
+  | 'document'
+  | 'coach'
+  | 'redact';
 
 export interface ProcessedRequest {
-  requestType: RequestType;
+  requestMode: RequestMode;
   prompt: string;
+  language?: string;
+  domain?: string;
 }

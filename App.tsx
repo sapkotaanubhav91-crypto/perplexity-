@@ -6,7 +6,7 @@ import ChatLog from './components/ChatLog';
 import TopBar from './components/TopBar';
 import Footer from './components/Footer';
 import { ChatMessage, Part, GroundingChunk } from './types';
-import { sendMessageStream, processUserRequest, generateImage, editImage } from './services/geminiService';
+import { sendMessageStream, processUserRequest } from './services/geminiService';
 import useTextToSpeech from './hooks/useTextToSpeech';
 
 const App: React.FC = () => {
@@ -135,42 +135,22 @@ const App: React.FC = () => {
     setMessages(prev => [...prev, modelMessage]);
 
     try {
-        const { requestType, prompt } = await processUserRequest(parts);
+        const { requestMode } = await processUserRequest(parts);
         
-        if (requestType === 'generate') {
-             const base64Image = await generateImage(prompt);
-             const newPart: Part = { inlineData: { mimeType: 'image/jpeg', data: base64Image } };
-             const finalModelMessage: ChatMessage = {
-                id: modelMessageId,
-                role: 'model',
-                parts: [
-                    { text: `Here's the image I generated for: "${prompt}"` },
-                    newPart
-                ]
-             };
-             setMessages(prev => prev.map(msg => msg.id === modelMessageId ? finalModelMessage : msg));
+        const stream = sendMessageStream({
+            history: updatedMessages, 
+            isDeepSearch,
+            requestMode,
+        });
+        await streamResponse(stream, modelMessageId);
 
-        } else if (requestType === 'edit') {
-            const editedParts = await editImage(parts);
-            const finalModelMessage: ChatMessage = {
-                id: modelMessageId,
-                role: 'model',
-                parts: editedParts,
-            };
-            setMessages(prev => prev.map(msg => msg.id === modelMessageId ? finalModelMessage : msg));
-
-        } else { // 'search'
-            const stream = sendMessageStream({history: updatedMessages, isDeepSearch});
-            await streamResponse(stream, modelMessageId);
-
-            // If it was a standard search (not deep search), mark it for follow-up.
-            if (!isDeepSearch) {
-              setMessages(prev => prev.map(msg => 
-                msg.id === modelMessageId
-                  ? { ...msg, isFollowUpPrompt: true, originalUserMessageId: userMessage.id }
-                  : msg
-              ));
-            }
+        // If it was a standard search (not deep search), mark it for follow-up.
+        if (!isDeepSearch && (requestMode === 'search' || requestMode === 'explain')) {
+          setMessages(prev => prev.map(msg => 
+            msg.id === modelMessageId
+              ? { ...msg, isFollowUpPrompt: true, originalUserMessageId: userMessage.id }
+              : msg
+          ));
         }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';

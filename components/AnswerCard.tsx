@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { ChatMessage, TTSControls } from '../types';
 import Sources from './Sources';
 import { marked } from 'marked';
@@ -49,8 +49,75 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
   const textPart = parts.find(p => 'text' in p);
   const imagePart = parts.find(p => 'inlineData' in p);
 
+  const contentRef = useRef<HTMLDivElement>(null);
   const text = textPart && 'text' in textPart ? textPart.text : '';
   const { speak, cancel, isSpeaking } = ttsControls;
+
+  useEffect(() => {
+    if (contentRef.current) {
+        const codeBlocks = contentRef.current.querySelectorAll('pre');
+        codeBlocks.forEach(pre => {
+            if (pre.parentElement?.classList.contains('code-block-container')) {
+                return; // Already processed
+            }
+
+            const code = pre.querySelector('code');
+            if (!code) return;
+
+            const container = document.createElement('div');
+            container.className = 'code-block-container bg-gray-900 text-white rounded-lg my-4 overflow-hidden';
+            
+            const language = code.className.replace(/language-/, '').trim();
+
+            const header = document.createElement('div');
+            header.className = 'flex justify-between items-center px-4 py-2 bg-gray-800';
+
+            const langDisplay = document.createElement('span');
+            langDisplay.className = 'text-xs text-gray-400 font-sans capitalize';
+            langDisplay.innerText = language || 'code';
+            
+            const button = document.createElement('button');
+            button.className = 'flex items-center gap-1.5 px-2 py-1 bg-gray-700 text-gray-300 rounded-md text-xs hover:bg-gray-600 transition-colors';
+            
+            const buttonText = document.createElement('span');
+            buttonText.innerText = 'Copy';
+            
+            const buttonIcon = document.createElement('span');
+            buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+            </svg>`;
+            
+            button.appendChild(buttonIcon);
+            button.appendChild(buttonText);
+            
+            header.appendChild(langDisplay);
+            header.appendChild(button);
+
+            button.addEventListener('click', () => {
+                navigator.clipboard.writeText(code.innerText).then(() => {
+                    buttonText.innerText = 'Copied!';
+                    buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>`;
+                    setTimeout(() => {
+                        buttonText.innerText = 'Copy';
+                        buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>`;
+                    }, 2000);
+                }).catch(err => {
+                    buttonText.innerText = 'Failed!';
+                    console.error('Failed to copy text: ', err);
+                });
+            });
+
+            pre.parentNode?.insertBefore(container, pre);
+            container.appendChild(header);
+            container.appendChild(pre);
+            pre.className += ' p-4 overflow-x-auto text-sm';
+        });
+    }
+  }, [text]);
 
   if (text === '' && !imagePart) { // Render loading indicator
     if (isDeepSearch) {
@@ -80,7 +147,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
   const parsedHtml = formattedText ? marked.parse(formattedText) : '';
   const plainText = text.replace(/(\*\*|__|\*|_|`|#+\s)/g, ''); // Basic markdown removal for cleaner speech
   
-  const contentClasses = ['text-gray-800', 'text-base', 'leading-relaxed', 'prose'];
+  const contentClasses = ['prose', 'max-w-none', 'text-gray-800', 'text-base', 'leading-relaxed'];
 
   return (
     <div className="w-full">
@@ -96,6 +163,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
 
       {text && (
         <div 
+          ref={contentRef}
           className={contentClasses.join(' ')}
           dangerouslySetInnerHTML={{ __html: parsedHtml }}
         />
