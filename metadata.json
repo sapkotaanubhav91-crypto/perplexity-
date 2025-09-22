@@ -1,7 +1,5 @@
 {
-  "name": "Anthara ai ",
-  "description": "Anthara ai is an ai created by adj group to help people with their taks ",
-  "requestFramePermissions": [
-    "microphone"
-  ]
+  "name": "Morphic",
+  "description": "Morphic is an AI assistant that helps people with their tasks.",
+  "requestFramePermissions": []
 }

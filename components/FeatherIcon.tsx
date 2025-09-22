@@ -1,20 +1,15 @@
 import React from 'react';
 
-const FeatherIcon: React.FC<{ className?: string }> = ({ className = 'w-12 h-12' }) => {
+const MorphicIcon: React.FC<{ className?: string }> = ({ className = 'w-12 h-12' }) => {
   return (
     <div className={className}>
-        <svg viewBox="0 0 50 80" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" className="w-full h-full">
-            <defs>
-                <linearGradient id="featherGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" style={{ stopColor: '#005f73' }} />
-                    <stop offset="100%" style={{ stopColor: '#9bf099' }} />
-                </linearGradient>
-            </defs>
-            <path d="M41.42,78.2c-5.91-1.62-10.36-5.24-14.59-9.11c-1.92-1.76-3.81-3.6-5.83-5.26c-1.87-1.54-3.83-2.98-5.73-4.5 c-4.57-3.66-8.5-8.23-10.74-13.88c-0.57-1.44-0.12-3.08,1.06-4.01c1.19-0.93,2.83-0.8,4.01,0.33c1.7,1.61,3.48,3.15,5.32,4.61 c1.53,1.21,3.1,2.38,4.69,3.53c1.94,1.4,3.83,2.89,5.81,4.24c3.5,2.4,7.2,4.5,11.5,5.19c1.47,0.23,2.5,1.6,2.3,3.07 C53.03,76.5,51.87,77.83,50.42,78.2h-9Z" transform="translate(-8.58 -1.2)" fill="url(#featherGradient)"></path>
-            <path d="M12.7,46.85c1.4-0.45,2.42-1.74,2.5-3.23c0.08-1.49-0.81-2.85-2.2-3.41c-2.3-0.92-4.5-2.07-6.49-3.55 c-2.42-1.8-4.43-4.1-5.69-6.88c-1.28-2.82-1.63-6-0.91-9.01c0.72-3.01,2.4-5.74,4.78-7.85c3.21-2.84,7.3-4.22,11.45-3.89 c1.51,0.12,2.7,1.43,2.58,2.94c-0.12,1.51-1.43,2.7-2.94,2.58c-2.97-0.24-5.85,0.73-8.08,2.77c-1.64,1.5-2.76,3.5-3.26,5.65 c-0.5,2.15-0.27,4.35,0.67,6.33c1,2.06,2.69,3.81,4.8,5.1c1.8,1.11,3.77,2,5.83,2.6c1.48,0.43,2.54,1.8,2.33,3.28 c-0.21,1.48-1.6,2.54-3.08,2.33c-3.03-0.44-5.91-1.58-8.48-3.23c-1.4-0.9-3.08-0.61-4,0.78s-0.61,3.08,0.78,4 c2.79,1.81,5.89,3.05,9.11,3.64c1.55,0.29,2.66,1.72,2.5,3.27c-0.16,1.55-1.58,2.66-3.13,2.5c-3.97-0.34-7.72-1.67-11.02-3.75 C11.31,49.27,10.97,47.6,12.7,46.85z" transform="translate(-1 -1.2)" fill="url(#featherGradient)"></path>
+        <svg viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg' className="w-full h-full" aria-hidden="true">
+            <circle cx='50' cy='50' r='50' fill='black'/>
+            <circle cx='35' cy='50' r='8' fill='white'/>
+            <circle cx='65' cy='50' r='8' fill='white'/>
         </svg>
     </div>
   );
 };
 
-export default FeatherIcon;
+export default MorphicIcon;

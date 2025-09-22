@@ -1,10 +1,8 @@
 import React, { useState, useCallback, useRef, useEffect } from 'react';
 import Header from './components/Header';
 import PromptInputBar from './components/SearchBar';
-import SuggestionChips from './components/SuggestionChips';
 import ChatLog from './components/ChatLog';
 import TopBar from './components/TopBar';
-import Footer from './components/Footer';
 import { ChatMessage, Part, GroundingChunk } from './types';
 import { sendMessageStream, processUserRequest } from './services/geminiService';
 import useTextToSpeech from './hooks/useTextToSpeech';
@@ -166,42 +164,30 @@ const App: React.FC = () => {
       setIsLoading(false);
     }
   }, [isLoading, messages, ttsControls, streamResponse]);
-
-  const handleSuggestionClick = (suggestion: string) => {
-    handleSearch([{ text: suggestion }], false);
-  };
   
   return (
     <div className="flex flex-col h-screen bg-white text-gray-800 font-sans">
       <TopBar />
-      <div ref={appBodyRef} className="flex-1 overflow-y-auto">
+      <main ref={appBodyRef} className="flex-1 overflow-y-auto w-full">
         <div className="mx-auto max-w-3xl px-4 pt-24 pb-48">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-start text-center h-full">
+            <div className="flex flex-col items-center justify-center text-center h-[calc(100vh-280px)] min-h-[250px]">
               <Header />
-               <div className="w-full mt-12">
-                 <PromptInputBar onSearch={handleSearch} isLoading={isLoading} />
-              </div>
-              <SuggestionChips onSuggestionClick={handleSuggestionClick} />
             </div>
           ) : (
             <ChatLog messages={messages} ttsControls={ttsControls} onElaborationRequest={handleRequestElaboration} />
           )}
         </div>
-      </div>
+      </main>
 
       <div className="fixed bottom-0 left-0 right-0 bg-gradient-to-t from-white via-white/95 to-transparent pointer-events-none">
-        <div className="container mx-auto max-w-3xl px-4 pt-4 pb-6 pointer-events-auto">
-           {messages.length > 0 && (
-            <PromptInputBar
+        <div className="container mx-auto max-w-3xl px-4 pt-4 pb-6 pointer-events-auto flex justify-center">
+           <PromptInputBar
               onSearch={handleSearch}
               isLoading={isLoading}
             />
-           )}
         </div>
       </div>
-      
-      {messages.length === 0 && <Footer />}
     </div>
   );
 };

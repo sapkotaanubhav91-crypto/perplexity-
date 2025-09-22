@@ -1,17 +1,15 @@
 import React from 'react';
-import FeatherIcon from './FeatherIcon';
+import MorphicIcon from './FeatherIcon';
 
 const Logo: React.FC = () => {
   return (
-    <div className="flex items-center gap-2">
-      <FeatherIcon className="w-8 h-8" />
-      <div className="flex items-baseline">
-        <span className="text-2xl text-gray-800" style={{ fontFamily: "'Playfair Display', serif", fontWeight: 600 }}>
-          Anthara
+    <div className="flex items-center gap-3">
+      <MorphicIcon className="w-6 h-6" />
+      <div>
+        <span className="text-lg font-semibold text-gray-900 leading-none">
+          Morphic
         </span>
-        <span className="text-xl text-gray-500 font-medium ml-1">
-          AI
-        </span>
+        <p className="text-sm text-gray-500 leading-none">morphic.sh</p>
       </div>
     </div>
   );
