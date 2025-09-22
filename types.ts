@@ -15,6 +15,10 @@ export interface ChatMessage {
   isDeepSearch?: boolean; // For user messages to trigger, and model messages to show status.
   isFollowUpPrompt?: boolean; // For model messages to show the "tell me more" button.
   originalUserMessageId?: string; // For model messages to link back to the original user query.
+  // New properties for search results UI
+  requestMode?: RequestMode;
+  userQuery?: string;
+  relatedQueries?: string[];
 }
 
 export interface TTSControls {

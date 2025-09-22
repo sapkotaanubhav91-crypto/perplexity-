@@ -19,34 +19,67 @@ const App: React.FC = () => {
       appBodyRef.current.scrollTop = appBodyRef.current.scrollHeight;
     }
   }, [messages]);
+  
+  const parseResponse = (fullText: string) => {
+    const separator = '---';
+    const relatedMarker = 'Related:';
+    const parts = fullText.split(separator);
+    
+    let mainContent = fullText;
+    let relatedQueries: string[] = [];
+
+    if (parts.length > 1) {
+      const lastPart = parts[parts.length - 1];
+      const relatedIndex = lastPart.indexOf(relatedMarker);
+      if (relatedIndex !== -1) {
+        mainContent = parts.slice(0, -1).join(separator).trim();
+        const relatedText = lastPart.substring(relatedIndex + relatedMarker.length);
+        relatedQueries = relatedText
+          .split('\n')
+          .map(q => q.replace(/^- \[?/, '').replace(/\]?$/, '').trim())
+          .filter(Boolean);
+      }
+    }
+    return { mainContent, relatedQueries };
+  };
 
   const streamResponse = useCallback(async (
       stream: AsyncGenerator<{ text: string; sources: GroundingChunk[] }>,
       modelMessageId: string
   ) => {
       let streamedText = '';
-      const sources: GroundingChunk[] = [];
+      let finalSources: GroundingChunk[] = [];
       const uniqueSourceUris = new Set<string>();
 
       for await (const chunk of stream) {
           streamedText += chunk.text;
-          if (chunk.sources) {
-              chunk.sources.forEach(source => {
-                  if (source.web?.uri && !uniqueSourceUris.has(source.web.uri)) {
-                      sources.push(source);
-                      uniqueSourceUris.add(source.web.uri);
-                  }
-              });
-          }
+          const currentSources = chunk.sources || [];
+          
+          currentSources.forEach(source => {
+              if (source.web?.uri && !uniqueSourceUris.has(source.web.uri)) {
+                  finalSources.push(source);
+                  uniqueSourceUris.add(source.web.uri);
+              }
+          });
+
           setMessages(prev =>
               prev.map(msg =>
                   msg.id === modelMessageId
-                      ? { ...msg, parts: [{ text: streamedText }], sources: [...sources] }
+                      ? { ...msg, parts: [{ text: streamedText }], sources: [...finalSources] }
                       : msg
               )
           );
       }
-      return streamedText;
+      
+      // After streaming is complete, parse for related questions
+      const { mainContent, relatedQueries } = parseResponse(streamedText);
+      setMessages(prev => prev.map(msg => 
+          msg.id === modelMessageId 
+            ? { ...msg, parts: [{ text: mainContent }], relatedQueries, sources: finalSources }
+            : msg
+      ));
+
+      return mainContent;
   }, []);
   
   const handleRequestElaboration = useCallback(async (modelMessageIdToUpdate: string, originalUserMessageId: string) => {
@@ -118,23 +151,28 @@ const App: React.FC = () => {
       parts: parts,
       isDeepSearch: isDeepSearch,
     };
+    
+    const textPart = parts.find(p => 'text' in p) as { text: string } | undefined;
+    const userQueryText = textPart?.text || 'Image query';
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
 
-    // Add an empty model message to show a thinking indicator
-    const modelMessageId = (Date.now() + 1).toString();
-    const modelMessage: ChatMessage = {
-      id: modelMessageId,
-      role: 'model',
-      parts: [{ text: '' }],
-      isDeepSearch: isDeepSearch,
-    };
-    setMessages(prev => [...prev, modelMessage]);
-
     try {
         const { requestMode } = await processUserRequest(parts);
         
+        // Add an empty model message to show a thinking indicator
+        const modelMessageId = (Date.now() + 1).toString();
+        const modelMessage: ChatMessage = {
+          id: modelMessageId,
+          role: 'model',
+          parts: [{ text: '' }],
+          isDeepSearch: isDeepSearch,
+          requestMode: requestMode,
+          userQuery: userQueryText,
+        };
+        setMessages(prev => [...prev, modelMessage]);
+
         const stream = sendMessageStream({
             history: updatedMessages, 
             isDeepSearch,
@@ -153,13 +191,15 @@ const App: React.FC = () => {
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setError(errorMessage);
-      setMessages(prev =>
-        prev.map(msg =>
-          msg.id === modelMessageId
-            ? { ...msg, parts: [{ text: `Sorry, I ran into an error: ${errorMessage}` }] }
-            : msg
-        )
-      );
+      setMessages(prev => prev.slice(0, -1)); // Remove the empty model message on error
+      // Optionally, add an error message to the chat
+      const errorBotMessage: ChatMessage = {
+        id: Date.now().toString(),
+        role: 'model',
+        parts: [{ text: `Sorry, I ran into an error: ${errorMessage}` }],
+      };
+      setMessages(prev => [...prev, errorBotMessage]);
+
     } finally {
       setIsLoading(false);
     }
