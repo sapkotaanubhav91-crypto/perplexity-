@@ -168,10 +168,10 @@ const App: React.FC = () => {
   return (
     <div className="flex flex-col h-screen bg-white text-gray-800 font-sans">
       <TopBar />
-      <main ref={appBodyRef} className="flex-1 overflow-y-auto w-full">
-        <div className="mx-auto max-w-3xl px-4 pt-24 pb-48">
+      <main ref={appBodyRef} className="flex-1 overflow-y-auto w-full flex flex-col pt-24 pb-48">
+        <div className="w-full mx-auto max-w-3xl px-4 my-auto">
           {messages.length === 0 ? (
-            <div className="flex flex-col items-center justify-center text-center h-[calc(100vh-280px)] min-h-[250px]">
+            <div className="flex flex-col items-center justify-center text-center">
               <Header />
             </div>
           ) : (
