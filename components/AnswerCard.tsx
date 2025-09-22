@@ -209,7 +209,8 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
             />
           )}
       </div>
-      {sources && sources.length > 0 && requestMode !== 'search' && <Sources sources={sources} />}
+      {/* Fix: Removed redundant `requestMode !== 'search'` check which caused a TypeScript error. */}
+      {sources && sources.length > 0 && <Sources sources={sources} />}
     </div>
   );
 };

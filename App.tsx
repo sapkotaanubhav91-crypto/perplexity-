@@ -7,6 +7,55 @@ import { ChatMessage, Part, GroundingChunk } from './types';
 import { sendMessageStream, processUserRequest } from './services/geminiService';
 import useTextToSpeech from './hooks/useTextToSpeech';
 
+const formatAiOutput = (text: string): string => {
+  return text
+    .split('\n')
+    .map(line => {
+      const trimmedLine = line.trim();
+      // Check for common markdown list markers
+      if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
+        // Find the start of the content after the marker
+        const contentIndex = line.indexOf(trimmedLine);
+        const markerAndWhitespace = line.substring(0, contentIndex);
+        let content = trimmedLine.substring(trimmedLine.indexOf(' ') + 1);
+
+        if (content) {
+          // Capitalize the first letter and lowercase the rest, as per the Python example
+          content = content.charAt(0).toUpperCase() + content.slice(1).toLowerCase();
+          return `${markerAndWhitespace}${content}`;
+        }
+      }
+      return line;
+    })
+    .join('\n');
+};
+
+const parseAndFormatResponse = (fullText: string) => {
+  const separator = '---';
+  const relatedMarker = 'Related:';
+  const parts = fullText.split(separator);
+
+  let mainContent = fullText;
+  let relatedQueries: string[] = [];
+
+  if (parts.length > 1) {
+    const lastPart = parts[parts.length - 1];
+    const relatedIndex = lastPart.indexOf(relatedMarker);
+    if (relatedIndex !== -1) {
+      mainContent = parts.slice(0, -1).join(separator).trim();
+      const relatedText = lastPart.substring(relatedIndex + relatedMarker.length);
+      relatedQueries = relatedText
+        .split('\n')
+        .map(q => q.replace(/^- \[?/, '').replace(/\]?$/, '').trim())
+        .filter(Boolean);
+    }
+  }
+  
+  const formattedMainContent = formatAiOutput(mainContent);
+  return { mainContent: formattedMainContent, relatedQueries };
+};
+
+
 const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -20,29 +69,6 @@ const App: React.FC = () => {
     }
   }, [messages]);
   
-  const parseResponse = (fullText: string) => {
-    const separator = '---';
-    const relatedMarker = 'Related:';
-    const parts = fullText.split(separator);
-    
-    let mainContent = fullText;
-    let relatedQueries: string[] = [];
-
-    if (parts.length > 1) {
-      const lastPart = parts[parts.length - 1];
-      const relatedIndex = lastPart.indexOf(relatedMarker);
-      if (relatedIndex !== -1) {
-        mainContent = parts.slice(0, -1).join(separator).trim();
-        const relatedText = lastPart.substring(relatedIndex + relatedMarker.length);
-        relatedQueries = relatedText
-          .split('\n')
-          .map(q => q.replace(/^- \[?/, '').replace(/\]?$/, '').trim())
-          .filter(Boolean);
-      }
-    }
-    return { mainContent, relatedQueries };
-  };
-
   const streamResponse = useCallback(async (
       stream: AsyncGenerator<{ text: string; sources: GroundingChunk[] }>,
       modelMessageId: string
@@ -72,7 +98,7 @@ const App: React.FC = () => {
       }
       
       // After streaming is complete, parse for related questions
-      const { mainContent, relatedQueries } = parseResponse(streamedText);
+      const { mainContent, relatedQueries } = parseAndFormatResponse(streamedText);
       setMessages(prev => prev.map(msg => 
           msg.id === modelMessageId 
             ? { ...msg, parts: [{ text: mainContent }], relatedQueries, sources: finalSources }
