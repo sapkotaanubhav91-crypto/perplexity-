@@ -53,6 +53,8 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
   const text = textPart && 'text' in textPart ? textPart.text : '';
   const { speak, cancel, isSpeaking } = ttsControls;
 
+  const hasCitations = /<sup><a href="#source-\d+/.test(text);
+
   useEffect(() => {
     if (contentRef.current) {
         const codeBlocks = contentRef.current.querySelectorAll('pre');
@@ -116,7 +118,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
                   </div>
               ) : (
                 <>
-                  {sources && sources.length > 0 && <Sources sources={sources} />}
+                  {sources && sources.length > 0 && <Sources sources={sources} isCited={hasCitations} />}
                   <div 
                     ref={contentRef}
                     className="prose prose-lg max-w-none text-gray-800 leading-relaxed 
@@ -210,7 +212,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
           )}
       </div>
       {/* Fix: Removed redundant `requestMode !== 'search'` check which caused a TypeScript error. */}
-      {sources && sources.length > 0 && <Sources sources={sources} />}
+      {sources && sources.length > 0 && <Sources sources={sources} isCited={hasCitations} />}
     </div>
   );
 };

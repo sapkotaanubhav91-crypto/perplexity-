@@ -3,11 +3,12 @@ import { GroundingChunk } from '../types';
 
 interface SourcesProps {
   sources: GroundingChunk[];
+  isCited?: boolean;
 }
 
 const MAX_INITIAL_SOURCES = 3;
 
-const Sources: React.FC<SourcesProps> = ({ sources }) => {
+const Sources: React.FC<SourcesProps> = ({ sources, isCited = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const validSources = sources.filter(source => source.web?.uri && source.web?.title);
 
@@ -26,9 +27,11 @@ const Sources: React.FC<SourcesProps> = ({ sources }) => {
       </h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {displayedSources.map((source, index) => {
+          const sourceNumber = index + 1;
           const hostname = new URL(source.web.uri).hostname.replace('www.', '');
           return (
             <a
+              id={isCited ? `source-${sourceNumber}` : undefined}
               key={index}
               href={source.web.uri}
               target="_blank"
@@ -36,14 +39,15 @@ const Sources: React.FC<SourcesProps> = ({ sources }) => {
               className="block p-3 bg-gray-100 rounded-lg border border-transparent hover:border-gray-300 transition-all duration-200 group"
             >
               <div className="flex items-center gap-2 mb-1">
+                {isCited && <span className="text-xs font-semibold text-gray-500">{sourceNumber}.</span>}
                 <img 
                   src={`https://www.google.com/s2/favicons?sz=32&domain_url=${hostname}`} 
                   alt={`${hostname} favicon`} 
-                  className="w-4 h-4 object-contain"
+                  className="w-4 h-4 object-contain flex-shrink-0"
                 />
                 <p className="text-sm font-medium text-gray-800 truncate group-hover:underline">{source.web.title}</p>
               </div>
-              <p className="text-gray-500 text-xs truncate">{hostname}</p>
+              <p className={`text-gray-500 text-xs truncate ${isCited ? 'pl-4' : ''}`}>{hostname}</p>
             </a>
           );
         })}

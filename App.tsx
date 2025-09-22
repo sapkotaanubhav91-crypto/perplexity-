@@ -7,30 +7,23 @@ import { ChatMessage, Part, GroundingChunk } from './types';
 import { sendMessageStream, processUserRequest } from './services/geminiService';
 import useTextToSpeech from './hooks/useTextToSpeech';
 
-const formatAiOutput = (text: string): string => {
-  return text
-    .split('\n')
-    .map(line => {
-      const trimmedLine = line.trim();
-      // Check for common markdown list markers
-      if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
-        // Find the start of the content after the marker
-        const contentIndex = line.indexOf(trimmedLine);
-        const markerAndWhitespace = line.substring(0, contentIndex);
-        let content = trimmedLine.substring(trimmedLine.indexOf(' ') + 1);
-
-        if (content) {
-          // Capitalize the first letter and lowercase the rest, as per the Python example
-          content = content.charAt(0).toUpperCase() + content.slice(1).toLowerCase();
-          return `${markerAndWhitespace}${content}`;
+const formatCitations = (text: string, sources: GroundingChunk[]): string => {
+    if (!sources || sources.length === 0) {
+        return text.replace(/~~\s*source\s*~~/g, '');
+    }
+    let citationIndex = 0;
+    return text.replace(/~~\s*source\s*~~/g, () => {
+        if (citationIndex < sources.length) {
+            const sourceNumber = citationIndex + 1;
+            citationIndex++;
+            // Using a superscript for citation looks cleaner and links to the source list
+            return `<sup><a href="#source-${sourceNumber}" aria-label="Source ${sourceNumber}" class="text-blue-600 hover:underline font-medium">[${sourceNumber}]</a></sup>`;
         }
-      }
-      return line;
-    })
-    .join('\n');
+        return ''; // Remove if we have more markers than sources
+    });
 };
 
-const parseAndFormatResponse = (fullText: string) => {
+const parseResponse = (fullText: string) => {
   const separator = '---';
   const relatedMarker = 'Related:';
   const parts = fullText.split(separator);
@@ -51,8 +44,7 @@ const parseAndFormatResponse = (fullText: string) => {
     }
   }
   
-  const formattedMainContent = formatAiOutput(mainContent);
-  return { mainContent: formattedMainContent, relatedQueries };
+  return { mainContent, relatedQueries };
 };
 
 
@@ -97,11 +89,12 @@ const App: React.FC = () => {
           );
       }
       
-      // After streaming is complete, parse for related questions
-      const { mainContent, relatedQueries } = parseAndFormatResponse(streamedText);
+      // After streaming is complete, parse for related questions and format citations.
+      const { mainContent, relatedQueries } = parseResponse(streamedText);
+      const formattedContent = formatCitations(mainContent, finalSources);
       setMessages(prev => prev.map(msg => 
           msg.id === modelMessageId 
-            ? { ...msg, parts: [{ text: mainContent }], relatedQueries, sources: finalSources }
+            ? { ...msg, parts: [{ text: formattedContent }], relatedQueries, sources: finalSources }
             : msg
       ));
 

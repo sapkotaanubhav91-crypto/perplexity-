@@ -6,7 +6,7 @@ import { ChatMessage, GroundingChunk, ProcessedRequest, Part, RequestMode } from
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
 const SYSTEM_PROMPTS: Record<RequestMode, string> = {
-  search: `You are Morphic, a helpful and knowledgeable research assistant. Your goal is to provide accurate, comprehensive, and well-structured answers to user queries. 
+  search: `You are Anthara, a helpful and knowledgeable research assistant. Your goal is to provide accurate, comprehensive, and well-structured answers to user queries. 
 - You must respond in the same language as the user's prompt.
 - When giving answers, always format them clearly using markdown:
   - Use bullet points for lists.
@@ -140,7 +140,7 @@ export async function* sendMessageStream({
   };
   
   if (isElaboration) {
-      modelParams.config.systemInstruction = `You are Morphic, an expert research analyst. The user has asked for a more detailed explanation about their previous query. Provide a comprehensive, well-structured, and detailed answer. Format the response for readability: use paragraphs, bullet points, and markdown. You MUST cite your sources. You must respond in the same language as the user's prompt.`;
+      modelParams.config.systemInstruction = `You are Anthara, an expert research analyst. The user has asked for a more detailed explanation about their previous query. Provide a comprehensive, well-structured, and detailed answer. Format the response for readability: use paragraphs, bullet points, and markdown. You MUST cite your sources. You must respond in the same language as the user's prompt.`;
   } else {
       modelParams.config.systemInstruction = SYSTEM_PROMPTS[requestMode] || SYSTEM_PROMPTS['search'];
   }
