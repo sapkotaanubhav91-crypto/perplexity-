@@ -65,25 +65,115 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
             if (pre.parentElement?.classList.contains('code-block-container')) return; // Already processed
             const code = pre.querySelector('code');
             if (!code) return;
+            
             const container = document.createElement('div');
             container.className = 'code-block-container bg-gray-900 text-white rounded-lg my-4 overflow-hidden';
-            const language = code.className.replace(/language-/, '').trim();
+            
+            const language = code.className.replace(/language-/, '').trim().toLowerCase();
+            
             const header = document.createElement('div');
             header.className = 'flex justify-between items-center px-4 py-2 bg-gray-800';
+            
             const langDisplay = document.createElement('span');
             langDisplay.className = 'text-xs text-gray-400 font-sans capitalize';
             langDisplay.innerText = language || 'code';
-            const button = document.createElement('button');
-            button.className = 'flex items-center gap-1.5 px-2 py-1 bg-gray-700 text-gray-300 rounded-md text-xs hover:bg-gray-600 transition-colors';
+            
+            const buttonsWrapper = document.createElement('div');
+            buttonsWrapper.className = 'flex items-center gap-2';
+
+            if (['javascript', 'js', 'html'].includes(language)) {
+                const runButton = document.createElement('button');
+                runButton.className = 'flex items-center gap-1.5 px-2 py-1 bg-green-600/20 text-green-300 rounded-md text-xs hover:bg-green-600/40 transition-colors';
+                runButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg><span>Run</span>`;
+                buttonsWrapper.appendChild(runButton);
+
+                runButton.addEventListener('click', () => {
+                    const existingOutput = container.querySelector('.code-output-container');
+                    if (existingOutput) {
+                        existingOutput.remove();
+                        runButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" /></svg><span>Run</span>`;
+                        return;
+                    }
+
+                    runButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" /></svg><span>Close</span>`;
+
+                    const outputContainer = document.createElement('div');
+                    outputContainer.className = 'code-output-container border-t border-gray-700';
+
+                    const outputHeader = document.createElement('div');
+                    outputHeader.className = 'px-4 py-1.5 bg-gray-800 text-xs text-gray-400 font-sans';
+                    outputHeader.innerText = language === 'html' ? 'Preview' : 'Console Output';
+                    outputContainer.appendChild(outputHeader);
+
+                    const outputContent = document.createElement('div');
+                    outputContainer.appendChild(outputContent);
+                    
+                    if (language === 'html') {
+                        outputContent.className = 'output-content p-4 bg-white';
+                        const iframe = document.createElement('iframe');
+                        iframe.className = 'w-full h-64 border-0';
+                        iframe.sandbox.add('allow-scripts');
+                        iframe.srcdoc = code.innerText;
+                        outputContent.appendChild(iframe);
+                    } else { // javascript or js
+                        outputContent.className = 'output-content p-4';
+                        const outputPre = document.createElement('pre');
+                        outputPre.className = 'text-sm whitespace-pre-wrap font-mono text-gray-300';
+                        outputContent.appendChild(outputPre);
+
+                        const logs: string[] = [];
+                        const originalConsoleLog = console.log;
+                        console.log = (...args) => {
+                            logs.push(args.map(a => {
+                                try {
+                                    return typeof a === 'object' ? JSON.stringify(a, null, 2) : String(a);
+                                } catch (e) {
+                                    return '[Unserializable Object]';
+                                }
+                            }).join(' '));
+                            originalConsoleLog(...args);
+                        };
+
+                        try {
+                            const result = new Function(code.innerText)();
+                            if (result !== undefined) {
+                                logs.push(`// returns: ${JSON.stringify(result, null, 2)}`);
+                            }
+                        } catch (e) {
+                            if (e instanceof Error) {
+                                logs.push(`// Error: ${e.message}`);
+                            } else {
+                                logs.push(`// Error: ${String(e)}`);
+                            }
+                        } finally {
+                            console.log = originalConsoleLog;
+                        }
+
+                        if (logs.length > 0) {
+                            outputPre.textContent = logs.join('\n');
+                        } else {
+                            outputPre.innerHTML = `<span class="text-gray-500 italic">No console output.</span>`;
+                        }
+                    }
+
+                    container.appendChild(outputContainer);
+                });
+            }
+
+            const copyButton = document.createElement('button');
+            copyButton.className = 'flex items-center gap-1.5 px-2 py-1 bg-gray-700 text-gray-300 rounded-md text-xs hover:bg-gray-600 transition-colors';
             const buttonText = document.createElement('span');
             buttonText.innerText = 'Copy';
             const buttonIcon = document.createElement('span');
             buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>`;
-            button.appendChild(buttonIcon);
-            button.appendChild(buttonText);
+            copyButton.appendChild(buttonIcon);
+            copyButton.appendChild(buttonText);
+            buttonsWrapper.appendChild(copyButton);
+
             header.appendChild(langDisplay);
-            header.appendChild(button);
-            button.addEventListener('click', () => {
+            header.appendChild(buttonsWrapper);
+
+            copyButton.addEventListener('click', () => {
                 navigator.clipboard.writeText(code.innerText).then(() => {
                     buttonText.innerText = 'Copied!';
                     buttonIcon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg>`;
@@ -93,6 +183,7 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
                     }, 2000);
                 });
             });
+
             pre.parentNode?.insertBefore(container, pre);
             container.appendChild(header);
             container.appendChild(pre);
