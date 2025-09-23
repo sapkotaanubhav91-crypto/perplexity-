@@ -19,12 +19,14 @@ export interface ChatMessage {
   requestMode?: RequestMode;
   userQuery?: string;
   relatedQueries?: string[];
+  rawTextForTTS?: string; // Clean text for Text-to-Speech
 }
 
 export interface TTSControls {
   speak: (text: string) => void;
   cancel: () => void;
   isSpeaking: boolean;
+  speakingText: string | null; // The text currently being spoken
   voices: SpeechSynthesisVoice[];
   selectedVoice: SpeechSynthesisVoice | undefined;
   setSelectedVoice: (voiceName: string) => void;

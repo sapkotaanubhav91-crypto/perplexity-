@@ -1,18 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-
-export interface TTSControls {
-  speak: (text: string) => void;
-  cancel: () => void;
-  isSpeaking: boolean;
-  voices: SpeechSynthesisVoice[];
-  selectedVoice: SpeechSynthesisVoice | undefined;
-  setSelectedVoice: (voiceName: string) => void;
-}
+import { TTSControls } from '../types';
 
 const useTextToSpeech = (): TTSControls => {
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
   const [selectedVoice, setSelectedVoiceState] = useState<SpeechSynthesisVoice | undefined>();
   const [isSpeaking, setIsSpeaking] = useState(false);
+  const [speakingText, setSpeakingText] = useState<string | null>(null);
 
   const populateVoiceList = useCallback(() => {
     const newVoices = window.speechSynthesis.getVoices();
@@ -46,9 +39,18 @@ const useTextToSpeech = (): TTSControls => {
     // Create a new utterance for each speech request
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.voice = selectedVoice;
-    utterance.onstart = () => setIsSpeaking(true);
-    utterance.onend = () => setIsSpeaking(false);
-    utterance.onerror = () => setIsSpeaking(false);
+    utterance.onstart = () => {
+      setIsSpeaking(true);
+      setSpeakingText(text);
+    };
+    utterance.onend = () => {
+      setIsSpeaking(false);
+      setSpeakingText(null);
+    };
+    utterance.onerror = () => {
+      setIsSpeaking(false);
+      setSpeakingText(null);
+    };
     
     window.speechSynthesis.cancel(); // Cancel any previous speech
     window.speechSynthesis.speak(utterance);
@@ -57,6 +59,7 @@ const useTextToSpeech = (): TTSControls => {
   const cancel = useCallback(() => {
     window.speechSynthesis.cancel();
     setIsSpeaking(false);
+    setSpeakingText(null);
   }, []);
 
   const setSelectedVoice = (voiceName: string) => {
@@ -66,7 +69,7 @@ const useTextToSpeech = (): TTSControls => {
     }
   };
 
-  return { speak, cancel, isSpeaking, voices, selectedVoice, setSelectedVoice };
+  return { speak, cancel, isSpeaking, speakingText, voices, selectedVoice, setSelectedVoice };
 };
 
 export default useTextToSpeech;

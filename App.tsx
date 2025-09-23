@@ -23,31 +23,6 @@ const formatCitations = (text: string, sources: GroundingChunk[]): string => {
     });
 };
 
-const parseResponse = (fullText: string) => {
-  const separator = '---';
-  const relatedMarker = 'Related:';
-  const parts = fullText.split(separator);
-
-  let mainContent = fullText;
-  let relatedQueries: string[] = [];
-
-  if (parts.length > 1) {
-    const lastPart = parts[parts.length - 1];
-    const relatedIndex = lastPart.indexOf(relatedMarker);
-    if (relatedIndex !== -1) {
-      mainContent = parts.slice(0, -1).join(separator).trim();
-      const relatedText = lastPart.substring(relatedIndex + relatedMarker.length);
-      relatedQueries = relatedText
-        .split('\n')
-        .map(q => q.replace(/^- \[?/, '').replace(/\]?$/, '').trim())
-        .filter(Boolean);
-    }
-  }
-  
-  return { mainContent, relatedQueries };
-};
-
-
 const App: React.FC = () => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -64,7 +39,7 @@ const App: React.FC = () => {
   const streamResponse = useCallback(async (
       stream: AsyncGenerator<{ text: string; sources: GroundingChunk[] }>,
       modelMessageId: string
-  ) => {
+  ): Promise<{ fullText: string; sources: GroundingChunk[] }> => {
       let streamedText = '';
       let finalSources: GroundingChunk[] = [];
       const uniqueSourceUris = new Set<string>();
@@ -89,16 +64,7 @@ const App: React.FC = () => {
           );
       }
       
-      // After streaming is complete, parse for related questions and format citations.
-      const { mainContent, relatedQueries } = parseResponse(streamedText);
-      const formattedContent = formatCitations(mainContent, finalSources);
-      setMessages(prev => prev.map(msg => 
-          msg.id === modelMessageId 
-            ? { ...msg, parts: [{ text: formattedContent }], relatedQueries, sources: finalSources }
-            : msg
-      ));
-
-      return mainContent;
+      return { fullText: streamedText, sources: finalSources };
   }, []);
   
   const handleRequestElaboration = useCallback(async (modelMessageIdToUpdate: string, originalUserMessageId: string) => {
@@ -140,7 +106,18 @@ const App: React.FC = () => {
     
     try {
         const stream = sendMessageStream({ history: historyForModel, isElaboration: true });
-        await streamResponse(stream, modelMessageId);
+        const { fullText, sources } = await streamResponse(stream, modelMessageId);
+        const formattedContent = formatCitations(fullText, sources);
+        setMessages(prev =>
+          prev.map(msg =>
+            msg.id === modelMessageId
+              ? { ...msg, parts: [{ text: formattedContent }], sources, rawTextForTTS: fullText }
+              : msg
+          )
+        );
+        if (fullText.trim()) {
+            ttsControls.speak(fullText);
+        }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setError(errorMessage);
@@ -176,12 +153,12 @@ const App: React.FC = () => {
 
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
+    
+    const modelMessageId = (Date.now() + 1).toString();
 
     try {
         const { requestMode } = await processUserRequest(parts);
         
-        // Add an empty model message to show a thinking indicator
-        const modelMessageId = (Date.now() + 1).toString();
         const modelMessage: ChatMessage = {
           id: modelMessageId,
           role: 'model',
@@ -197,28 +174,50 @@ const App: React.FC = () => {
             isDeepSearch,
             requestMode,
         });
-        await streamResponse(stream, modelMessageId);
 
-        // If it was a standard search (not deep search), mark it for follow-up.
-        if (!isDeepSearch && (requestMode === 'search' || requestMode === 'explain')) {
-          setMessages(prev => prev.map(msg => 
-            msg.id === modelMessageId
-              ? { ...msg, isFollowUpPrompt: true, originalUserMessageId: userMessage.id }
-              : msg
-          ));
+        const { fullText, sources } = await streamResponse(stream, modelMessageId);
+
+        let mainContent = fullText;
+        let relatedQueries: string[] = [];
+
+        if (requestMode === 'search') {
+            const relatedRegex = /\[RELATED_QUESTIONS\]([\s\S]*?)\[\/RELATED_QUESTIONS\]/im;
+            const match = fullText.match(relatedRegex);
+            if (match && match[1]) {
+                mainContent = fullText.replace(relatedRegex, '').trim();
+                relatedQueries = match[1].trim().split('\n').filter(q => q.trim() !== '');
+            }
         }
+        
+        const formattedContent = formatCitations(mainContent, sources);
+
+        setMessages(prev => prev.map(msg =>
+          msg.id === modelMessageId
+            ? {
+                ...msg,
+                parts: [{ text: formattedContent }],
+                sources: sources,
+                relatedQueries: requestMode === 'search' ? relatedQueries : undefined,
+                isFollowUpPrompt: !isDeepSearch && (requestMode === 'search' || requestMode === 'explain'),
+                originalUserMessageId: userMessage.id,
+                rawTextForTTS: mainContent,
+              }
+            : msg
+        ));
+        
+        if (mainContent.trim()) {
+            ttsControls.speak(mainContent);
+        }
+
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred.';
       setError(errorMessage);
-      setMessages(prev => prev.slice(0, -1)); // Remove the empty model message on error
-      // Optionally, add an error message to the chat
-      const errorBotMessage: ChatMessage = {
-        id: Date.now().toString(),
-        role: 'model',
-        parts: [{ text: `Sorry, I ran into an error: ${errorMessage}` }],
-      };
-      setMessages(prev => [...prev, errorBotMessage]);
-
+      setMessages(prev => prev.map(msg =>
+          msg.id === modelMessageId
+            ? { ...msg, parts: [{ text: `Sorry, I ran into an error: ${errorMessage}` }] }
+            : msg
+        )
+      );
     } finally {
       setIsLoading(false);
     }

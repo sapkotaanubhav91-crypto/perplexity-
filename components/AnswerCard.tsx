@@ -45,7 +45,7 @@ const SearchResultHeader: React.FC<{ query?: string; resultCount?: number; isLoa
 
 
 const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElaborationRequest }) => {
-  const { parts, sources, isDeepSearch, requestMode, userQuery, relatedQueries } = message;
+  const { parts, sources, isDeepSearch, requestMode, userQuery, relatedQueries, rawTextForTTS } = message;
   const textPart = parts.find(p => 'text' in p);
   const imagePart = parts.find(p => 'inlineData' in p);
 
@@ -53,6 +53,10 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
   const text = textPart && 'text' in textPart ? textPart.text : '';
 
   const hasCitations = /<sup><a href="#source-\d+/.test(text);
+
+  const textToSpeak = rawTextForTTS || (textPart && 'text' in textPart ? textPart.text.replace(/<[^>]*>?/gm, '') : '');
+  const thisCardIsSpeaking = ttsControls.isSpeaking && ttsControls.speakingText === textToSpeak;
+
 
   useEffect(() => {
     if (contentRef.current) {
@@ -197,6 +201,25 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
         </div>
       )}
       <div className="flex items-center gap-2 mt-4">
+          {textToSpeak && (
+            <IconButton
+              onClick={() => {
+                if (thisCardIsSpeaking) {
+                  ttsControls.cancel();
+                } else {
+                  ttsControls.speak(textToSpeak);
+                }
+              }}
+              ariaLabel={thisCardIsSpeaking ? 'Stop reading' : 'Read aloud'}
+              icon={
+                thisCardIsSpeaking ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon></svg>
+                )
+              }
+            />
+          )}
           <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>} ariaLabel="Copy response" />
           <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.085a2 2 0 00-1.736.97l-2.714 5.428a2 2 0 001.736 2.97h4.618a2 2 0 002-2z" /></svg>} ariaLabel="Good response" />
           <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.738 3h4.017c.163 0 .326-.02.485-.06L17 4m-7 10v5a2 2 0 002 2h.085a2 2 0 001.736-.97l2.714-5.428a2 2 0 00-1.736-2.97h-4.618a2 2 0 00-2 2z" /></svg>} ariaLabel="Bad response" />
