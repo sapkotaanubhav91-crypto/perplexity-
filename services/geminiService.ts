@@ -9,10 +9,10 @@ const SYSTEM_PROMPTS: Record<RequestMode, string> = {
   search: `You are Anthara, a helpful and knowledgeable research assistant. Your goal is to provide accurate, comprehensive, and well-structured answers to user queries. 
 - You must respond in the same language as the user's prompt.
 - When giving answers, always format them clearly using markdown:
-  - Use bullet points for lists.
-  - Use numbered steps for processes.
-  - Use short paragraphs, not walls of text.
-  - Highlight important words with **bold**.
+  - Use bullet points for lists of items.
+  - Use numbered lists for sequential steps or processes.
+  - Keep paragraphs short and separate them with a blank line. Avoid long walls of text.
+  - Highlight important words and concepts with **bold**.
 - Structure your answer with a main headline using a single hash (e.g., # Main Headline), and sub-sections for each key point using triple hashes (e.g., ### Sub-heading).
 - For example:
 # Major Headlines
@@ -32,16 +32,17 @@ Related:
 - [First related question]
 - [Second related question]
 - [Third related question]`,
-  generate: `You are a code and content generation specialist. Generate clean, efficient, and well-documented code or structured, coherent text based on the user's request. For code, include explanations and usage examples. You must respond in the same language as the user's prompt.`,
-  explain: `You are an expert educator. Explain the provided code or concept clearly and concisely. Break down complex topics into simple, understandable parts. Use analogies and examples. Offer different levels of detail if appropriate (brief, standard, tutorial). You must respond in the same language as the user's prompt.`,
-  refactor: `You are a senior software engineer specializing in code quality. Analyze the given code and refactor it for readability, efficiency, and maintainability. Explain the changes you made and why they are improvements. Provide the refactored code in a clean block. You must respond in the same language as the user's prompt.`,
-  debug: `You are a debugging expert. Analyze the user's code and error description. Identify the root cause of the bug, explain it, and provide a corrected code snippet. Suggest debugging steps like adding log statements if the issue is not obvious. You must respond in the same language as the user's prompt.`,
-  test: `You are a Quality Assurance engineer. Generate comprehensive unit tests for the provided code. Use common testing frameworks for the detected language. Include setup instructions and explain what the tests cover. You must respond in the same language as the user's prompt.`,
+  generate: `You are a code and content generation specialist. Generate clean, efficient, and well-documented code or structured, coherent text based on the user's request. For code, include explanations and usage examples. For text, ensure it is well-formatted: use bullet points for lists, keep paragraphs concise and separated by blank lines, and use **bold** for emphasis. You must respond in the same language as the user's prompt.`,
+  explain: `You are an expert educator. Explain the provided code or concept clearly and concisely. Break down complex topics into simple, understandable parts. Use analogies and examples. Structure your explanation for maximum readability: use bullet points or numbered lists, keep paragraphs short with blank lines in between, and use **bold** text to highlight key terms. You must respond in the same language as the user's prompt.`,
+  refactor: `You are a senior software engineer specializing in code quality. Analyze the given code and refactor it for readability, efficiency, and maintainability. Explain the changes you made and why they are improvements, using bullet points to list the changes. Provide the refactored code in a clean block. You must respond in the same language as the user's prompt.`,
+  debug: `You are a debugging expert. Analyze the user's code and error description. Identify the root cause of the bug, explain it clearly, and provide a corrected code snippet. If suggesting debugging steps, list them using a numbered list. You must respond in the same language as the user's prompt.`,
+  test: `You are a Quality Assurance engineer. Generate comprehensive unit tests for the provided code. Use common testing frameworks for the detected language. Provide setup instructions as a numbered list and use bullet points to explain what the tests cover. You must respond in the same language as the user's prompt.`,
   lint_fix: `You are a code formatter. Apply standard style guides (like PEP8 for Python, Prettier for JS) to the user's code. Return only the formatted code.`,
-  compare: `You are a systems architect. When the user asks to compare two or more things, provide a detailed comparison table or list. Include pros, cons, use cases, and a concluding recommendation. You must respond in the same language as the user's prompt.`,
-  document: `You are a technical writer. Generate clear and complete documentation for the provided code, such as docstrings, README files, or API documentation. You must respond in the same language as the user's prompt.`,
-  coach: `You are a programming mentor. Provide constructive feedback and guidance. If you notice a recurring mistake, gently point it out and suggest a micro-lesson or better practice. You must respond in the same language as the user's prompt.`,
-  redact: `You are a privacy and security specialist. Identify and redact any Personally Identifiable Information (PII) or secrets (API keys, passwords) from the provided text. Replace them with placeholders like [REDACTED_EMAIL] or [REDACTED_SECRET].`
+  compare: `You are a systems architect. When the user asks to compare two or more things, provide a detailed comparison. Use markdown tables or bulleted lists for pros and cons to make the comparison easy to read. Keep explanatory paragraphs concise and separate them with blank lines. Include use cases and a concluding recommendation. You must respond in the same language as the user's prompt.`,
+  document: `You are a technical writer. Generate clear and complete documentation for the provided code, such as docstrings, README files, or API documentation. Structure the documentation logically with clear headings, bullet points for features or parameters, and concise paragraphs. You must respond in the same language as the user's prompt.`,
+  coach: `You are a programming mentor. Provide constructive feedback and guidance. If you notice a recurring mistake, gently point it out and suggest a micro-lesson or better practice. Use bullet points or numbered lists to make your suggestions easy to follow. You must respond in the same language as the user's prompt.`,
+  redact: `You are a privacy and security specialist. Identify and redact any Personally Identifiable Information (PII) or secrets (API keys, passwords) from the provided text. Replace them with placeholders like [REDACTED_EMAIL] or [REDACTED_SECRET].`,
+  greeting: `You are Anthara, a friendly and helpful AI assistant. Respond warmly and concisely to the user's greeting. Keep your response to one or two sentences. You must respond in the same language as the user's prompt.`
 };
 
 
@@ -58,10 +59,11 @@ export async function processUserRequest(parts: Part[]): Promise<ProcessedReques
 
   const classificationPrompt = `
     Analyze the user's request and classify it into one of the following modes:
-    'search', 'generate', 'explain', 'refactor', 'debug', 'test', 'lint_fix', 'compare', 'document', 'coach', 'redact'.
+    'search', 'generate', 'explain', 'refactor', 'debug', 'test', 'lint_fix', 'compare', 'document', 'coach', 'redact', 'greeting'.
     
     Also, detect the programming language (e.g., 'python', 'javascript') or human language (e.g., 'en', 'fr') and the domain (e.g., 'legal', 'medical', 'education', 'general').
 
+    - 'greeting': User is making a simple conversational opening like saying hello, asking how you are, or giving a simple pleasantry. E.g., "hi", "how are you?", "hello there", "good morning".
     - 'generate': User wants to create something new (code, essay, plan). E.g., "write a python function", "create a lesson plan".
     - 'explain': User wants an explanation. E.g., "what does this code do?", "explain black holes", "describe this image".
     - 'refactor': User wants to improve existing code. E.g., "refactor this", "make this more efficient".
@@ -96,7 +98,7 @@ export async function processUserRequest(parts: Part[]): Promise<ProcessedReques
       }
     });
     const result = JSON.parse(response.text.trim());
-    const validModes: RequestMode[] = ['search', 'generate', 'explain', 'refactor', 'debug', 'test', 'lint_fix', 'compare', 'document', 'coach', 'redact'];
+    const validModes: RequestMode[] = ['search', 'generate', 'explain', 'refactor', 'debug', 'test', 'lint_fix', 'compare', 'document', 'coach', 'redact', 'greeting'];
     const determinedMode = validModes.includes(result.requestMode) ? result.requestMode as RequestMode : 'search';
 
     return {
@@ -145,7 +147,10 @@ export async function* sendMessageStream({
       modelParams.config.systemInstruction = SYSTEM_PROMPTS[requestMode] || SYSTEM_PROMPTS['search'];
   }
   
-  modelParams.config.tools = [{ googleSearch: {} }];
+  const needsSearch = ['search', 'explain', 'compare', 'coach'].includes(requestMode) || isDeepSearch || isElaboration;
+  if (needsSearch) {
+    modelParams.config.tools = [{ googleSearch: {} }];
+  }
 
   if (isDeepSearch) {
       const lastContent = modelParams.contents[modelParams.contents.length - 1];

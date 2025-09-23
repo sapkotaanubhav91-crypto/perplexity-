@@ -41,7 +41,8 @@ export type RequestMode =
   | 'compare'
   | 'document'
   | 'coach'
-  | 'redact';
+  | 'redact'
+  | 'greeting';
 
 export interface ProcessedRequest {
   requestMode: RequestMode;
