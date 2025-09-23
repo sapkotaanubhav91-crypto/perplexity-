@@ -42,7 +42,8 @@ export type RequestMode =
   | 'document'
   | 'coach'
   | 'redact'
-  | 'greeting';
+  | 'greeting'
+  | 'meta_explain';
 
 export interface ProcessedRequest {
   requestMode: RequestMode;

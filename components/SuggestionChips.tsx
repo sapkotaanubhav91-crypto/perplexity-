@@ -4,7 +4,7 @@ const suggestions = [
   { text: 'How to prepare for a Himalayan trek', icon: '⛰️' },
   { text: 'Relaxing hobbies to reduce stress and boost focus', icon: '🧘' },
   { text: 'Startups\' role in innovation', icon: '🚀' },
-  { text: 'Indian Nobel laureates and their achievements', icon: '🏆' },
+  { text: 'How was this app made?', icon: '🛠️' },
 ];
 
 interface SuggestionChipsProps {

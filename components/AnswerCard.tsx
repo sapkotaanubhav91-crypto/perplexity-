@@ -51,7 +51,6 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
 
   const contentRef = useRef<HTMLDivElement>(null);
   const text = textPart && 'text' in textPart ? textPart.text : '';
-  const { speak, cancel, isSpeaking } = ttsControls;
 
   const hasCitations = /<sup><a href="#source-\d+/.test(text);
 
@@ -162,7 +161,6 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
   }
   
   const parsedHtml = text ? marked.parse(text) : '';
-  const plainText = text.replace(/(\*\*|__|\*|_|`|#+\s)/g, '');
   
   return (
     <div className="w-full">
@@ -199,17 +197,12 @@ const AnswerCard: React.FC<AnswerCardProps> = ({ message, ttsControls, onElabora
         </div>
       )}
       <div className="flex items-center gap-2 mt-4">
-          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.898 0V3a1 1 0 112 0v2.101a7.002 7.002 0 01-11.898 0V3a1 1 0 01-1-1zM10 18a7.002 7.002 0 006.323-3.99.5.5 0 00-.866-.5A6.002 6.002 0 014.543 13.51a.5.5 0 00-.866.5A7.002 7.002 0 0010 18z" clipRule="evenodd" /></svg>} ariaLabel="Regenerate response" />
           <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>} ariaLabel="Copy response" />
-          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>} ariaLabel="Download response" />
           <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.085a2 2 0 00-1.736.97l-2.714 5.428a2 2 0 001.736 2.97h4.618a2 2 0 002-2z" /></svg>} ariaLabel="Good response" />
-          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.738 3h4.017c.163 0 .326.02.485.06L17 4m-7 10v5a2 2 0 002 2h.085a2 2 0 001.736-.97l2.714-5.428a2 2 0 00-1.736-2.97h-4.618a2 2 0 00-2 2z" /></svg>} ariaLabel="Bad response" />
-          {text && (
-            <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414z" clipRule="evenodd" /></svg>}
-              ariaLabel={isSpeaking ? "Stop speaking" : "Read aloud"}
-              onClick={() => isSpeaking ? cancel() : speak(plainText)}
-            />
-          )}
+          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.738 3h4.017c.163 0 .326-.02.485-.06L17 4m-7 10v5a2 2 0 002 2h.085a2 2 0 001.736-.97l2.714-5.428a2 2 0 00-1.736-2.97h-4.618a2 2 0 00-2 2z" /></svg>} ariaLabel="Bad response" />
+          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" /><polyline points="16 6 12 2 8 6" /><line x1="12" y1="2" x2="12" y2="15" /></svg>} ariaLabel="Share response" />
+          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h5m11 2v-5h-5" /><path d="M4 9a9 9 0 0115-5.22M20 15a9 9 0 01-15 5.22" /></svg>} ariaLabel="Regenerate response" />
+          <IconButton icon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M5 12h.01M12 12h.01M19 12h.01" /></svg>} ariaLabel="More options" />
       </div>
       {/* Fix: Removed redundant `requestMode !== 'search'` check which caused a TypeScript error. */}
       {sources && sources.length > 0 && <Sources sources={sources} isCited={hasCitations} />}

@@ -34,7 +34,7 @@ const ChatLog: React.FC<ChatLogProps> = ({ messages, ttsControls, onElaborationR
         if (message.role === 'user') {
           return (
             <div key={message.id} className="flex justify-end items-start">
-              <div className="bg-blue-100 text-gray-800 rounded-2xl px-5 py-3 max-w-xl">
+              <div className="bg-gray-100 text-gray-800 rounded-2xl px-5 py-3 max-w-xl">
                 <div className="flex flex-col gap-3">
                   {message.parts.map((part, index) => (
                     <MessagePart key={index} part={part} />
